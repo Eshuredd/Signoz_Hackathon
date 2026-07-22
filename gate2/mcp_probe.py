@@ -31,7 +31,10 @@ from models import (
     Source,
     Span,
     Trace,
+    classify_trace_structure,
+    deterministic_assessment,
     now_utc,
+    relationship_capabilities,
 )
 
 
@@ -226,57 +229,78 @@ def run_mcp_probe(
         evidence.raw_artifacts.append(
             write_json_artifact(artifacts_dir / "mcp_initialize_raw.json", init_response)
         )
+        evidence.observations["initialize"] = "succeeded"
         client.initialized_notification()
+        evidence.observations["notifications_initialized"] = "succeeded"
 
         tools, tools_response = client.list_tools()
         evidence.raw_artifacts.append(
             write_json_artifact(artifacts_dir / "mcp_tools_list_raw.json", tools_response)
         )
         tool_names = {str(tool.get("name")): tool for tool in tools if tool.get("name")}
+        trace_related = sorted(
+            name for name in tool_names if "trace" in name.lower()
+        )
+        evidence.observations["tools_list"] = "succeeded"
+        evidence.observations["trace_related_tools"] = trace_related
         evidence.response_stability = CapabilityAssessment(
             "response stability",
-            CapabilityState.OBSERVED,
-            f"tools/list returned {len(tool_names)} tool(s)",
+            CapabilityState.NOT_OBSERVED,
+            f"tools/list returned {len(tool_names)} tool(s); repeated trace retrieval not yet tested",
         )
 
-        details_trace = try_mcp_direct_lookup(client, config, tool_names, evidence, artifacts_dir)
-        search_trace = try_mcp_attribute_search(client, config, tool_names, evidence, artifacts_dir)
+        details_trace: Trace | None = None
+        search_trace: Trace | None = None
+        try:
+            details_trace = try_mcp_direct_lookup(
+                client,
+                config,
+                tool_names,
+                evidence,
+                artifacts_dir,
+            )
+        except Exception as exc:
+            evidence.direct_lookup = CapabilityAssessment(
+                "direct trace lookup",
+                CapabilityState.FAILED,
+                f"{exc.__class__.__name__}: {exc}",
+            )
+            evidence.errors.append(f"mcp_direct_trace_lookup: {exc.__class__.__name__}: {exc}")
+
+        try:
+            search_trace = try_mcp_attribute_search(
+                client,
+                config,
+                tool_names,
+                evidence,
+                artifacts_dir,
+            )
+        except Exception as exc:
+            evidence.attribute_search = CapabilityAssessment(
+                "attribute-based trace search",
+                CapabilityState.FAILED,
+                f"{exc.__class__.__name__}: {exc}",
+            )
+            evidence.errors.append(f"mcp_attribute_search: {exc.__class__.__name__}: {exc}")
+
         trace = details_trace or search_trace
 
         if trace is None:
             raise IncompleteMCPTelemetry(
-                "MCP was reachable, but no complete trace telemetry was normalized from tool output."
+                "MCP was reachable, but no structured trace telemetry was normalized from tool output."
             )
 
         evidence.trace = trace
         evidence.field_assessments = trace.field_assessments()
-        evidence.response_classification = classify_trace(trace)
-        if trace.has_all_required_fields():
-            evidence.deterministic_evaluation = CapabilityAssessment(
-                "suitable for deterministic evaluation",
-                CapabilityState.OBSERVED,
-                "all required fields were structured in the MCP result",
-            )
-        else:
-            evidence.deterministic_evaluation = CapabilityAssessment(
-                "suitable for deterministic evaluation",
-                CapabilityState.FAILED,
-                "one or more required fields were missing or partial",
-            )
+        evidence.response_classification = classify_trace_structure(trace)
+        evidence.deterministic_evaluation = deterministic_assessment(trace)
         evidence.human_explanation = CapabilityAssessment(
             "suitable for human explanation",
             CapabilityState.OBSERVED,
             "MCP returned trace-related content",
         )
-        evidence.preserves_multiple_spans = CapabilityAssessment(
-            "preserves multiple spans",
-            CapabilityState.NOT_OBSERVED if len(trace.spans) == 1 else CapabilityState.OBSERVED,
-            f"normalized {len(trace.spans)} span(s)",
-        )
-        evidence.preserves_parent_child = CapabilityAssessment(
-            "preserves parent-child relationships",
-            CapabilityState.OBSERVED,
-            "parent_span_id was available in normalized spans",
+        evidence.preserves_multiple_spans, evidence.preserves_parent_child = (
+            relationship_capabilities(trace)
         )
         evidence.error_behavior = CapabilityAssessment(
             "error behavior",
@@ -357,10 +381,18 @@ def infer_mcp_blocker(config: Gate2Config) -> str:
     lock_path = Path(__file__).resolve().parent.parent / "casting.yaml.lock"
     if lock_path.exists():
         text = lock_path.read_text()
-        if "mcp:" in text and "enabled: false" in text:
+        mcp_section = ""
+        if "\n  mcp:" in text:
+            mcp_section = text.split("\n  mcp:", 1)[1].split("\n  metastore:", 1)[0]
+        if "enabled: false" in mcp_section:
             return (
                 "Local Foundry lock contains an MCP section with enabled: false; "
                 f"{config.mcp_health_url} is not reachable."
+            )
+        if "enabled: true" in mcp_section:
+            return (
+                "Local Foundry lock contains MCP enabled, but the MCP endpoint is "
+                f"not reachable at {config.mcp_health_url}."
             )
     return f"MCP endpoint {config.mcp_health_url} is not reachable."
 
@@ -408,6 +440,14 @@ def try_mcp_direct_lookup(
         CapabilityState.OBSERVED,
         f"normalized {len(trace.spans)} span(s)",
     )
+    observe_mcp_stability(
+        client,
+        "signoz_get_trace_details",
+        args,
+        trace,
+        evidence,
+        artifacts_dir / "mcp_get_trace_details_repeat_raw.json",
+    )
     return trace
 
 
@@ -454,7 +494,81 @@ def try_mcp_attribute_search(
         CapabilityState.OBSERVED,
         f"normalized {len(trace.spans)} span(s)",
     )
+    observe_mcp_stability(
+        client,
+        "signoz_search_traces",
+        args,
+        trace,
+        evidence,
+        artifacts_dir / "mcp_search_traces_repeat_raw.json",
+    )
     return trace
+
+
+def observe_mcp_stability(
+    client: MCPHttpClient,
+    tool_name: str,
+    args: dict[str, Any],
+    first_trace: Trace,
+    evidence: ProbeEvidence,
+    artifact_path: Path,
+) -> None:
+    try:
+        repeat_response = client.call_tool(tool_name, args)
+        evidence.raw_artifacts.append(write_json_artifact(artifact_path, repeat_response))
+        repeat_trace = normalize_mcp_trace(repeat_response)
+        if repeat_trace is None:
+            evidence.response_stability = CapabilityAssessment(
+                "response stability",
+                CapabilityState.FAILED,
+                "repeated tool call returned no structured trace",
+            )
+            return
+        if structural_signature(first_trace) == structural_signature(repeat_trace):
+            evidence.response_stability = CapabilityAssessment(
+                "response stability",
+                CapabilityState.OBSERVED,
+                f"{tool_name} returned stable structural fields across two equivalent calls",
+            )
+            evidence.observations["stable_repeated_workflow"] = tool_name
+        else:
+            evidence.response_stability = CapabilityAssessment(
+                "response stability",
+                CapabilityState.FAILED,
+                "repeated tool call changed normalized structural fields",
+            )
+    except Exception as exc:
+        evidence.response_stability = CapabilityAssessment(
+            "response stability",
+            CapabilityState.FAILED,
+            f"{exc.__class__.__name__}: {exc}",
+        )
+        evidence.errors.append(f"mcp_response_stability: {exc.__class__.__name__}: {exc}")
+
+
+def structural_signature(trace: Trace) -> dict[str, Any]:
+    return {
+        "span_count": len(trace.spans),
+        "field_states": {
+            assessment.field: assessment.state.value
+            for assessment in trace.field_assessments()
+        },
+        "span_shapes": [
+            {
+                "trace_id": bool(span.trace_id),
+                "span_id": bool(span.span_id),
+                "parent_span_id": span.parent_span_id is not None,
+                "span_name": bool(span.span_name),
+                "start_time": span.start_time is not None,
+                "end_time": span.end_time is not None,
+                "duration_nano": span.duration_nano is not None,
+                "status": bool(span.status),
+                "attribute_keys": sorted(span.attributes),
+                "resource_attribute_keys": sorted(span.resource_attributes),
+            }
+            for span in trace.spans
+        ],
+    }
 
 
 def args_for_trace_details(tool: dict[str, Any], trace_id: str) -> dict[str, Any]:
@@ -664,11 +778,7 @@ def ensure_dict(raw: Any) -> dict[str, Any]:
 
 
 def classify_trace(trace: Trace) -> str:
-    if trace.has_all_required_fields():
-        return "complete structured telemetry"
-    if any(assessment.state == FieldState.PRESENT for assessment in trace.field_assessments()):
-        return "partially structured telemetry"
-    return "summarized telemetry or natural-language explanation"
+    return classify_trace_structure(trace)
 
 
 def main() -> int:

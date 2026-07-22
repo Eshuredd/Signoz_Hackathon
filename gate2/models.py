@@ -19,6 +19,13 @@ REQUIRED_FIELDS = (
     "resource attributes",
 )
 
+EXPECTED_GATE1A_ATTRIBUTES = (
+    "agent.run_id",
+    "traceguard.run_id",
+    "traceguard.project",
+    "traceguard.gate",
+)
+
 
 class Source(str, Enum):
     TRACE_API = "SigNoz Trace API"
@@ -144,6 +151,21 @@ class Trace:
         allowed = {FieldState.PRESENT, FieldState.TRANSFORMED}
         return all(assessment.state in allowed for assessment in self.field_assessments())
 
+    def has_multiple_spans(self) -> bool:
+        return len(self.spans) >= 2
+
+    def has_valid_parent_child_relationship(self) -> bool:
+        if len(self.spans) < 2:
+            return False
+        spans_by_id = {span.span_id: span for span in self.spans if span.span_id}
+        for span in self.spans:
+            if not span.parent_span_id:
+                continue
+            parent = spans_by_id.get(span.parent_span_id)
+            if parent is not None and parent.trace_id == span.trace_id:
+                return True
+        return False
+
     def _all(self, predicate: Any) -> bool:
         return all(predicate(span) for span in self.spans)
 
@@ -172,7 +194,11 @@ class Trace:
     def _assess_parent_span_id(self) -> FieldAssessment:
         state = self._state_all_some(lambda span: span.parent_span_id is not None)
         root_count = sum(1 for span in self.spans if span.parent_span_id == "")
-        notes = f"{root_count} root span(s) have empty parent_span_id"
+        child_count = sum(1 for span in self.spans if span.parent_span_id)
+        notes = (
+            f"{root_count} root span(s) have empty parent_span_id; "
+            f"{child_count} child span reference(s) observed"
+        )
         return FieldAssessment("parent_span_id", state, notes)
 
     def _assess_span_name(self) -> FieldAssessment:
@@ -207,18 +233,51 @@ class Trace:
         )
 
     def _assess_attributes(self) -> FieldAssessment:
-        state = self._state_all_some(lambda span: isinstance(span.attributes, dict))
-        expected = {"traceguard.project", "traceguard.gate", "agent.run_id"}
+        structural_state = self._state_all_some(lambda span: isinstance(span.attributes, dict))
+        if structural_state == FieldState.ABSENT:
+            return FieldAssessment(
+                "complete attributes",
+                FieldState.ABSENT,
+                "attribute map unavailable",
+            )
+
+        non_empty_state = self._state_all_some(lambda span: bool(span.attributes))
         missing = sorted(
             {
                 key
-                for key in expected
+                for key in EXPECTED_GATE1A_ATTRIBUTES
                 if any(key not in span.attributes for span in self.spans)
             }
         )
-        notes = "custom Gate 1A attributes present"
+        if missing and non_empty_state == FieldState.ABSENT:
+            return FieldAssessment(
+                "complete attributes",
+                FieldState.ABSENT,
+                "attribute map structurally available but empty; missing expected custom attributes: "
+                + ", ".join(missing),
+            )
         if missing:
-            notes = "missing expected custom attributes: " + ", ".join(missing)
+            return FieldAssessment(
+                "complete attributes",
+                FieldState.PARTIAL,
+                "attribute map structurally available; missing expected custom attributes: "
+                + ", ".join(missing),
+            )
+
+        state = FieldState.PRESENT
+        if structural_state == FieldState.PARTIAL or non_empty_state == FieldState.PARTIAL:
+            state = FieldState.PARTIAL
+        notes = "attribute map structurally available; expected Gate 1A attributes present"
+        unknown_keys = sorted(
+            {
+                key
+                for span in self.spans
+                for key in span.attributes
+                if key not in EXPECTED_GATE1A_ATTRIBUTES
+            }
+        )
+        if unknown_keys:
+            notes += f"; preserved {len(unknown_keys)} non-required attribute key(s)"
         return FieldAssessment("complete attributes", state, notes)
 
     def _assess_resource_attributes(self) -> FieldAssessment:
@@ -275,14 +334,14 @@ class ProbeEvidence:
         default_factory=lambda: CapabilityAssessment(
             "preserves multiple spans",
             CapabilityState.NOT_OBSERVED,
-            "Gate 1A trace contains one span",
+            "no validated multi-span trace observed",
         )
     )
     preserves_parent_child: CapabilityAssessment = field(
         default_factory=lambda: CapabilityAssessment(
             "preserves parent-child relationships",
             CapabilityState.NOT_OBSERVED,
-            "Gate 1A trace contains one root span",
+            "no validated root-child trace observed",
         )
     )
     deterministic_evaluation: CapabilityAssessment = field(
@@ -324,6 +383,7 @@ class ProbeEvidence:
     blocker: str | None = None
     smallest_unblock: str | None = None
     mcp_timebox_reached: bool = False
+    observations: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -351,6 +411,7 @@ class ProbeEvidence:
             "blocker": self.blocker,
             "smallest_unblock": self.smallest_unblock,
             "mcp_timebox_reached": self.mcp_timebox_reached,
+            "observations": self.observations,
         }
 
 
@@ -394,3 +455,62 @@ class ComparisonReport:
 
 def now_utc() -> datetime:
     return datetime.now(UTC)
+
+
+def classify_trace_structure(trace: Trace) -> str:
+    if trace.has_all_required_fields():
+        return "complete structured telemetry"
+    if any(
+        assessment.state in {FieldState.PRESENT, FieldState.PARTIAL, FieldState.TRANSFORMED}
+        for assessment in trace.field_assessments()
+    ):
+        return "partially structured telemetry"
+    return "summarized telemetry or natural-language explanation"
+
+
+def deterministic_assessment(trace: Trace) -> CapabilityAssessment:
+    if trace.has_all_required_fields():
+        return CapabilityAssessment(
+            "suitable for deterministic evaluation",
+            CapabilityState.OBSERVED,
+            "all required Gate 2 fields are exposed as structured span data",
+        )
+    missing = [
+        f"{assessment.field}={assessment.state.value}"
+        for assessment in trace.field_assessments()
+        if assessment.state not in {FieldState.PRESENT, FieldState.TRANSFORMED}
+    ]
+    return CapabilityAssessment(
+        "suitable for deterministic evaluation",
+        CapabilityState.FAILED,
+        "required fields missing or incomplete: " + ", ".join(missing),
+    )
+
+
+def relationship_capabilities(trace: Trace) -> tuple[CapabilityAssessment, CapabilityAssessment]:
+    if trace.has_multiple_spans():
+        multiple = CapabilityAssessment(
+            "preserves multiple spans",
+            CapabilityState.OBSERVED,
+            f"retrieved {len(trace.spans)} span(s)",
+        )
+    else:
+        multiple = CapabilityAssessment(
+            "preserves multiple spans",
+            CapabilityState.NOT_OBSERVED,
+            f"retrieved {len(trace.spans)} span(s); root-only traces do not prove this",
+        )
+
+    if trace.has_valid_parent_child_relationship():
+        parent_child = CapabilityAssessment(
+            "preserves parent-child relationships",
+            CapabilityState.OBSERVED,
+            "at least one child parent_span_id resolved to a span_id in the same trace",
+        )
+    else:
+        parent_child = CapabilityAssessment(
+            "preserves parent-child relationships",
+            CapabilityState.NOT_OBSERVED,
+            "no validated root-child span pair was observed",
+        )
+    return multiple, parent_child

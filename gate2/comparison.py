@@ -119,24 +119,33 @@ def recommend(
     trace_api: ProbeEvidence,
     mcp: ProbeEvidence,
 ) -> tuple[str, str, str]:
-    if (
-        mcp.trace is not None
-        and mcp.trace.has_all_required_fields()
-        and mcp.response_classification == "complete structured telemetry"
-    ):
+    if mcp_can_be_authoritative(mcp):
         return (
             MCP_CAN_BE_AUTHORITATIVE,
-            "MCP returned complete structured telemetry with every required evaluator field.",
+            (
+                "MCP returned complete, stable, machine-readable structured telemetry "
+                "with required evaluator fields and validated multi-span parent-child evidence."
+            ),
             Source.MCP.value,
+        )
+
+    if trace_api.trace is None or not trace_api.trace.has_all_required_fields():
+        return (
+            HYBRID_REQUIRES_MORE_EVIDENCE,
+            (
+                "Trace API evidence is incomplete or unavailable, so no authoritative "
+                "Gate 2 telemetry source is currently usable."
+            ),
+            "none",
         )
 
     if not mcp.available or mcp.blocker:
         return (
             HYBRID_REQUIRES_MORE_EVIDENCE,
             (
-                "MCP could not be runtime-tested because the local MCP endpoint was "
-                "unavailable; use the Trace API provisionally until MCP is enabled "
-                "and complete structured span data is observed."
+                "MCP could not be runtime-tested after a supported setup/start attempt; "
+                "use the Trace API provisionally until MCP is enabled and complete "
+                "structured span data is observed."
             ),
             Source.TRACE_API.value,
         )
@@ -149,6 +158,33 @@ def recommend(
         ),
         Source.TRACE_API.value,
     )
+
+
+def mcp_can_be_authoritative(mcp: ProbeEvidence) -> bool:
+    return (
+        mcp.available
+        and mcp.trace is not None
+        and mcp.trace.has_all_required_fields()
+        and mcp.response_classification == "complete structured telemetry"
+        and mcp.deterministic_evaluation.state == CapabilityState.OBSERVED
+        and mcp.response_stability.state == CapabilityState.OBSERVED
+        and mcp.preserves_multiple_spans.state == CapabilityState.OBSERVED
+        and mcp.preserves_parent_child.state == CapabilityState.OBSERVED
+        and (
+            mcp.direct_lookup.state == CapabilityState.OBSERVED
+            or mcp.attribute_search.state == CapabilityState.OBSERVED
+        )
+        and not mcp.errors
+        and not mcp.blocker
+    )
+
+
+def exit_code_for_report(report: ComparisonReport) -> int:
+    if report.trace_api.trace is None or not report.trace_api.trace.has_all_required_fields():
+        return 1
+    if report.recommendation == HYBRID_REQUIRES_MORE_EVIDENCE:
+        return 2
+    return 0
 
 
 def write_report(path: Path, report: ComparisonReport) -> str:

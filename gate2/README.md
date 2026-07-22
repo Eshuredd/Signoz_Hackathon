@@ -5,159 +5,151 @@ Gate 2 compares two SigNoz retrieval paths for future TraceGuard evaluator input
 - Gate 2A: SigNoz Trace/query API
 - Gate 2B: SigNoz MCP
 
-The goal is only to determine whether each source can return complete, structured span data. This does not implement the evaluator, rule engine, API server, dashboard, CLI, database, or any TraceGuard product architecture.
+This gate only evaluates retrieval evidence. It does not implement the TraceGuard evaluator, malformed telemetry, TG-TEL rules, sample agents, dashboards, alerts, databases, APIs, or release gating.
 
-## Observed Local SigNoz
+## Status
 
-- SigNoz UI/API: `http://localhost:8080`
-- Health: `GET /api/v1/health` returned `{"status":"ok"}`
-- Version: `GET /api/v1/version` returned `v0.133.0`, `ee=Y`, `setupCompleted=true`
-- Trace/search API auth: protected endpoints returned `401 unauthenticated` without `SIGNOZ-API-KEY`
-- MCP: `casting.yaml.lock` contains `mcp.enabled: false`, `mcp.status.addresses.http: null`
-- MCP health: `http://localhost:8000/livez` was not reachable
+Gate 2A is implemented as a provisional retrieval path through:
 
-Official docs checked:
+- `POST /api/v4/traces/{trace_id}/waterfall`
+- `POST /api/v5/query_range`
 
-- [Trace API overview](https://signoz.io/docs/traces-management/trace-api/overview/)
-- [Search traces](https://signoz.io/docs/traces-management/trace-api/search-traces/)
-- [Service accounts](https://signoz.io/docs/manage/administrator-guide/iam/service-accounts/)
-- [SigNoz MCP server](https://signoz.io/docs/ai/signoz-mcp-server/)
+The Trace API probe now classifies completeness from normalized field assessments. It reports `complete structured telemetry` and deterministic suitability only when `Trace.has_all_required_fields()` passes. A root-only trace keeps parent-child preservation as `not observed`.
 
-## Install
+Gate 2B is implemented as an MCP runtime probe, but MCP is not considered authoritative unless an actual structured, stable, multi-span workflow is observed. MCP must expose trace-related tools from `tools/list`, return machine-readable trace telemetry, preserve all required fields, preserve a valid root-child relationship, and return the same structural fields across two equivalent retrievals.
 
-From this directory:
+## Official MCP Attempt
 
-```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+Official docs inspected on July 22, 2026:
+
+- SigNoz MCP server: <https://signoz.io/docs/ai/signoz-mcp-server/>
+- SigNoz Docker standalone Foundry MCP enablement: <https://signoz.io/docs/install/docker/>
+- SigNoz MCP server repository: <https://github.com/SigNoz/signoz-mcp-server>
+
+Supported self-hosted approaches from the docs include Foundry MCP enablement, the official `signoz/signoz-mcp-server` Docker image, the official binary, Go install, or source build. For this repo, the Foundry path was used.
+
+Current non-secret local state observed during this correction:
+
+- `foundryctl version`: `v0.2.15`
+- Docker daemon: unavailable at `/Users/dspl_012/.docker/run/docker.sock`
+- SigNoz API on `http://localhost:8080`: not reachable during this run
+- MCP health on `http://localhost:8000/livez`: not reachable during this run
+- `SIGNOZ_API_KEY`, `SIGNOZ_TRACE_ID`, and `TRACEGUARD_AGENT_RUN_ID`: unset in the shell
+
+Supported MCP enablement applied:
+
+```yaml
+spec:
+  mcp:
+    spec:
+      enabled: true
 ```
 
-If you already use the repository-level virtual environment:
+Command attempted:
 
 ```bash
-source ../.venv/bin/activate
-python -m pip install -r requirements.txt
+foundryctl cast -f casting.yaml --no-ledger
 ```
+
+Observed result:
+
+```text
+unable to get image 'signoz/signoz-mcp-server:latest': Cannot connect to the Docker daemon at unix:///Users/dspl_012/.docker/run/docker.sock. Is the docker daemon running?
+```
+
+This is an installation/startup prerequisite failure. It is not evidence about MCP telemetry completeness. The smallest next action is to start Docker, re-run `foundryctl cast -f casting.yaml`, verify `curl -fsS http://localhost:8000/livez`, export a SigNoz service-account key, and run `python3 gate2/mcp_probe.py`.
 
 ## Configure
 
-Copy the example values into your shell. Do not commit real secrets.
+Do not commit real secrets.
 
 ```bash
 export SIGNOZ_BASE_URL=http://localhost:8080
 export SIGNOZ_API_KEY="<service-account-key>"
-export SIGNOZ_TRACE_ID="<trace-id-printed-by-gate1>"
-export TRACEGUARD_AGENT_RUN_ID="<run-id-printed-by-gate1>"
+export SIGNOZ_TRACE_ID="<trace-id>"
+export TRACEGUARD_AGENT_RUN_ID="<agent-run-id>"
+export SIGNOZ_MCP_URL=http://localhost:8000/mcp
+export SIGNOZ_MCP_HEALTH_URL=http://localhost:8000/livez
 ```
 
-Create `SIGNOZ_API_KEY` in SigNoz:
-
-1. Open `http://localhost:8080`.
-2. Go to **Settings > Service Accounts**.
-3. Create a service account.
-4. Assign a viewer role or another role with trace read access.
-5. Open the service account **Keys** tab and create a key.
-6. Export that key as `SIGNOZ_API_KEY`.
-
-To get the Gate 1A IDs, run:
+Optional:
 
 ```bash
-cd ../gate1
-python telemetry.py
+export SIGNOZ_REQUEST_TIMEOUT_SECONDS=10
+export SIGNOZ_DEBUG=false
 ```
 
-Use the printed values:
+## Relationship Fixture
+
+`relationship_fixture.py` emits one valid two-span trace for Gate 2 retrieval validation:
 
 ```text
-TraceGuard Gate 1A run_id=<use-this-for-TRACEGUARD_AGENT_RUN_ID>
-SUCCESS: exported one custom trace (... trace_id=<use-this-for-SIGNOZ_TRACE_ID>)
+gate2.test.root
+└── gate2.test.child
 ```
 
-Gate 1A now includes both `traceguard.run_id` and `agent.run_id` on new traces so Gate 2 can test the future lookup path.
+It is not malformed telemetry and is not Gate 3. Use it only when relationship preservation needs to be empirically verified.
+
+```bash
+cd gate2
+python3 relationship_fixture.py
+```
+
+The retrieval check must verify both spans share the same trace ID, the child `parent_span_id` equals the root `span_id`, direct trace retrieval returns both spans, and the normalized model preserves the relationship.
 
 ## Run
+
+Install dependencies:
+
+```bash
+python3 -m pip install -r gate2/requirements.txt
+```
 
 Trace API only:
 
 ```bash
-python signoz_api_client.py
+cd gate2
+python3 signoz_api_client.py
 ```
 
 MCP only:
 
 ```bash
-export SIGNOZ_MCP_URL=http://localhost:8000/mcp
-export SIGNOZ_MCP_HEALTH_URL=http://localhost:8000/livez
-python mcp_probe.py
+cd gate2
+python3 mcp_probe.py
 ```
 
 Full comparison:
 
 ```bash
-python main.py
+cd gate2
+python3 main.py
 ```
 
-The comparison writes JSON artifacts under `gate2/artifacts/`, including:
+Full comparison exit codes:
 
-- `trace_api_waterfall_raw.json`
-- `trace_api_search_raw.json`
-- `trace_api_normalized.json`
-- `gate2_comparison.json`
+- `0`: both retrieval paths were tested sufficiently and an evidence-based final decision was produced
+- `1`: the Trace API failed, no authoritative telemetry source is usable, configuration is invalid, or Gate 2 cannot proceed
+- `2`: the Trace API works as the provisional source, but MCP remains unresolved because it could not be runtime-tested
 
-Secrets are not written to artifacts; `SIGNOZ_API_KEY` is recorded only as `<set>` or `<unset>`.
+## Evidence
 
-## Observed Gate 2 Run
+Raw runtime artifacts are written under `gate2/artifacts/` and are ignored by Git.
 
-Fresh Gate 1A target used for the local run:
+Sanitized committed evidence lives under `gate2/evidence/`:
 
-- trace_id: `3f44b12ed6cfd03d3bfd3e29d132674e`
-- agent.run_id: `4980418c-985d-4f70-8862-ca43ac569cce`
+- `observed_environment.json`
+- `trace_api_field_matrix.json`
+- `trace_api_relationship_check.json`
+- `mcp_attempt_summary.json`
+- `gate2_decision.json`
 
-Trace API results:
+These files must not contain API keys, authentication tokens, user credentials, or full sensitive telemetry.
 
-- Direct lookup succeeded through `POST /api/v4/traces/{traceID}/waterfall`
-- Attribute search succeeded through `POST /api/v5/query_range`
-- `agent.run_id` search matched 1 span row
-- The normalized trace contained 1 span and all required evaluator fields
+## Tests
 
-MCP results:
+Unit tests do not require a running SigNoz instance:
 
-- MCP server was not running locally
-- `curl -fsS http://localhost:8000/livez` failed to connect
-- No MCP tool list or trace response could be observed
-- MCP time-box was not exhausted; a concrete local config blocker was found immediately
-
-## Field Matrix
-
-| Required field | Trace API | MCP | Notes |
-|---|---|---|---|
-| trace_id | present | unavailable | Trace API span had `3f44b12ed6cfd03d3bfd3e29d132674e`; MCP not reachable |
-| span_id | present | unavailable | Trace API returned span ID `a7654272e52f60bd` |
-| parent_span_id | present | unavailable | Root span used empty string, preserving the field |
-| span_name | present | unavailable | `traceguard.gate1.connectivity` |
-| start_time | present | unavailable | Normalized from SigNoz span timestamp |
-| end_time | present | unavailable | Computed from start time plus `duration_nano` |
-| duration | present | unavailable | Stored as `duration_nano` |
-| status | present | unavailable | Trace API returned `status_code`, `status_code_string`, and `has_error` |
-| complete attributes | present | unavailable | Included `agent.run_id`, `traceguard.run_id`, `traceguard.project`, `traceguard.gate`, and `traceguard.check` |
-| resource attributes | present | unavailable | Included `service.name`, `service.version`, `service.instance.id`, and OpenTelemetry SDK metadata |
-
-## Decision
-
-Final Gate 2 recommendation:
-
-```text
-HYBRID_REQUIRES_MORE_EVIDENCE
+```bash
+python3 -m pytest tests/gate2
 ```
-
-Reason: the Trace API path was empirically complete for the Gate 1A trace, but MCP could not be runtime-tested because the local Foundry-installed SigNoz stack has MCP disabled and no MCP HTTP endpoint. Until MCP is enabled and shown to return complete structured span data, the SigNoz Trace API is the provisional evaluator data source for later TraceGuard work.
-
-Smallest MCP unblock:
-
-```text
-Enable or install the SigNoz MCP server for the local Foundry stack, expose its HTTP /mcp and /livez endpoints, and provide a service account API key.
-```
-
-Operational rule for later gates: proceed as though the SigNoz Trace API is authoritative unless stronger MCP evidence is collected.

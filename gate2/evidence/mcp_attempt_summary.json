@@ -1,0 +1,27 @@
+{
+  "sanitized": true,
+  "attempted_at": "2026-07-22T16:48:27+05:30",
+  "supported_approach": "Foundry MCP enablement from official SigNoz Docker self-host docs",
+  "configuration_change": {
+    "file": "casting.yaml",
+    "content": {
+      "spec.mcp.spec.enabled": true
+    }
+  },
+  "command_attempted": "foundryctl cast -f casting.yaml --no-ledger",
+  "non_secret_generated_configuration": {
+    "image": "signoz/signoz-mcp-server:latest",
+    "TRANSPORT_MODE": "http",
+    "MCP_SERVER_PORT": "8000",
+    "SIGNOZ_URL": "http://signoz-signoz-0:8080",
+    "published_port": "8000:8000"
+  },
+  "observed_error": "unable to get image 'signoz/signoz-mcp-server:latest': Cannot connect to the Docker daemon at unix:///Users/dspl_012/.docker/run/docker.sock. Is the docker daemon running?",
+  "failure_stage": "installation/startup prerequisite",
+  "mcp_runtime_tested": false,
+  "tools_list_observed": false,
+  "tool_input_schemas_observed": false,
+  "telemetry_result_observed": false,
+  "mcp_timebox_exhausted": false,
+  "smallest_next_action": "Start Docker, rerun foundryctl cast -f casting.yaml, verify http://localhost:8000/livez, export SIGNOZ_API_KEY, then run gate2/mcp_probe.py."
+}

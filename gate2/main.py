@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from comparison import compare_sources, render_report, write_report
+from comparison import compare_sources, exit_code_for_report, render_report, write_report
 from config import Gate2Config
 from exceptions import Gate2Error
 from logging_config import configure_logging
@@ -25,7 +25,7 @@ def main() -> int:
         print(render_report(report))
         print(f"JSON artifact: {report_path}")
 
-        return 0 if trace_api.trace is not None else 1
+        return exit_code_for_report(report)
     except Gate2Error as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

@@ -1,0 +1,29 @@
+{
+  "sanitized": true,
+  "source": "SigNoz Trace API",
+  "basis": "Gate 2 model/client deterministic assessment rules after correction",
+  "classification_rule": "complete structured telemetry only when Trace.has_all_required_fields() is true",
+  "required_fields": {
+    "trace_id": "present only when every normalized span has a trace_id",
+    "span_id": "present only when every normalized span has a span_id",
+    "parent_span_id": "present when the field is represented for every span; root-only representation does not prove parent-child preservation",
+    "span_name": "present only when every normalized span has a name",
+    "start_time": "present only when every normalized span has a parseable start timestamp",
+    "end_time": "present only when every normalized span has an end timestamp or one can be computed from start_time plus duration_nano",
+    "duration": "present only when every normalized span has duration_nano",
+    "status": "present only when every normalized span has structured status fields",
+    "complete attributes": "present only when the attribute map exists and expected Gate 1A attributes are present",
+    "resource attributes": "present only when every normalized span has a non-empty resource attribute map"
+  },
+  "expected_gate1a_attributes": [
+    "agent.run_id",
+    "traceguard.run_id",
+    "traceguard.project",
+    "traceguard.gate"
+  ],
+  "attribute_policy": {
+    "empty_attribute_map": "absent",
+    "missing_expected_attribute": "partial",
+    "unknown_attributes": "preserved"
+  }
+}

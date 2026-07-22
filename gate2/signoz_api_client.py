@@ -8,6 +8,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from requests import Response
@@ -19,9 +20,11 @@ from exceptions import (
     ConfigurationError,
     ConnectionFailure,
     EmptySearchResults,
+    Gate2Error,
     InvalidResponseSchema,
     RequestTimeout,
     TraceNotFound,
+    UnsupportedAPIOperation,
 )
 from logging_config import configure_logging
 from models import (
@@ -32,7 +35,10 @@ from models import (
     Span,
     Trace,
     TraceSearchHit,
+    classify_trace_structure,
+    deterministic_assessment,
     now_utc,
+    relationship_capabilities,
 )
 
 
@@ -202,7 +208,7 @@ def parse_json_response(response: Response, method: str, url: str) -> dict[str, 
     if response.status_code == 403:
         raise AuthorizationFailure(extract_error_message(payload, "forbidden"))
     if response.status_code == 404:
-        raise TraceNotFound(extract_error_message(payload, "trace not found"))
+        raise classify_not_found(payload, method, url)
     if response.status_code >= 400:
         raise InvalidResponseSchema(
             f"{method} {url} failed with status {response.status_code}: "
@@ -210,6 +216,34 @@ def parse_json_response(response: Response, method: str, url: str) -> dict[str, 
         )
 
     return payload
+
+
+def classify_not_found(payload: dict[str, Any], method: str, url: str) -> Gate2Error:
+    message = extract_error_message(payload, "not found")
+    path = urlparse(url).path
+    lowered = message.lower()
+    trace_not_found_terms = (
+        "trace not found",
+        "traceid not found",
+        "trace id not found",
+        "no trace found",
+        "trace not exist",
+    )
+    if "/api/v4/traces/" in path and path.endswith("/waterfall"):
+        if any(term in lowered for term in trace_not_found_terms):
+            return TraceNotFound(message)
+        return UnsupportedAPIOperation(
+            f"{method} {path} returned HTTP 404; the endpoint may be unsupported, "
+            f"incompatible with this SigNoz version, or routed incorrectly: {message}"
+        )
+    if path.endswith("/api/v5/query_range"):
+        return UnsupportedAPIOperation(
+            f"{method} {path} returned HTTP 404; query_range may be unavailable "
+            f"for this SigNoz version or route: {message}"
+        )
+    return UnsupportedAPIOperation(
+        f"{method} {path} returned HTTP 404; endpoint unavailable or wrong route: {message}"
+    )
 
 
 def extract_error_message(payload: dict[str, Any], fallback: str) -> str:
@@ -429,12 +463,21 @@ def run_trace_api_probe(
 
     try:
         health = client.health_check()
-        version = client.version()
         evidence.available = health.get("status") == "ok"
-        evidence.installed_signoz_version = str(version.get("version") or "unknown")
+        evidence.observations["health_check"] = "succeeded"
         write_json_artifact(artifacts_dir / "trace_api_health.json", health)
-        write_json_artifact(artifacts_dir / "trace_api_version.json", version)
+    except Exception as exc:
+        record_probe_error(evidence, logger, config, "health_check", exc)
 
+    try:
+        version = client.version()
+        evidence.installed_signoz_version = str(version.get("version") or "unknown")
+        evidence.observations["version_check"] = "succeeded"
+        write_json_artifact(artifacts_dir / "trace_api_version.json", version)
+    except Exception as exc:
+        record_probe_error(evidence, logger, config, "version_check", exc)
+
+    try:
         if client.auth_required_check():
             evidence.authentication_required = CapabilityAssessment(
                 "authentication required",
@@ -447,122 +490,171 @@ def run_trace_api_probe(
                 CapabilityState.NOT_OBSERVED,
                 "protected endpoint did not return 401 in the no-key probe",
             )
+        evidence.observations["authentication_requirement_check"] = "succeeded"
+    except Exception as exc:
+        evidence.authentication_required = CapabilityAssessment(
+            "authentication required",
+            CapabilityState.NOT_OBSERVED,
+            f"{exc.__class__.__name__}: {exc}",
+        )
+        record_probe_error(evidence, logger, config, "authentication_requirement_check", exc)
 
-        if not config.signoz_api_key:
-            raise AuthenticationFailure(
-                "SIGNOZ_API_KEY is unset; Trace API retrieval cannot run."
-            )
-
-        trace: Trace | None = None
-        if config.signoz_trace_id:
-            trace, raw_trace = client.get_trace(config.signoz_trace_id)
-            raw_path = write_json_artifact(
-                artifacts_dir / "trace_api_waterfall_raw.json",
-                raw_trace,
-            )
-            trace.raw_artifact = raw_path
-            evidence.raw_artifacts.append(raw_path)
-            evidence.direct_lookup = CapabilityAssessment(
-                "direct trace lookup",
-                CapabilityState.OBSERVED,
-                f"retrieved {len(trace.spans)} span(s)",
-            )
-        else:
-            evidence.direct_lookup = CapabilityAssessment(
-                "direct trace lookup",
-                CapabilityState.NOT_CONFIGURED,
-                "SIGNOZ_TRACE_ID is unset",
-            )
-
-        if config.agent_run_id:
-            hits, raw_search = client.find_trace_by_run_id(config.agent_run_id)
-            raw_path = write_json_artifact(
-                artifacts_dir / "trace_api_search_raw.json",
-                raw_search,
-            )
-            evidence.raw_artifacts.append(raw_path)
-            evidence.attribute_search = CapabilityAssessment(
-                "attribute-based trace search",
-                CapabilityState.OBSERVED,
-                f"agent.run_id matched {len(hits)} span row(s)",
-            )
-            if trace is None and hits:
-                trace, raw_trace = client.get_trace(hits[0].trace_id)
+    trace: Trace | None = None
+    if config.signoz_trace_id:
+        if config.signoz_api_key:
+            try:
+                trace, raw_trace = client.get_trace(config.signoz_trace_id)
                 raw_path = write_json_artifact(
-                    artifacts_dir / "trace_api_waterfall_from_search_raw.json",
+                    artifacts_dir / "trace_api_waterfall_raw.json",
                     raw_trace,
                 )
                 trace.raw_artifact = raw_path
                 evidence.raw_artifacts.append(raw_path)
+                evidence.direct_lookup = CapabilityAssessment(
+                    "direct trace lookup",
+                    CapabilityState.OBSERVED,
+                    f"retrieved {len(trace.spans)} span(s)",
+                )
+                evidence.observations["direct_trace_lookup"] = "succeeded"
+            except Exception as exc:
+                evidence.direct_lookup = CapabilityAssessment(
+                    "direct trace lookup",
+                    CapabilityState.FAILED,
+                    f"{exc.__class__.__name__}: {exc}",
+                )
+                record_probe_error(evidence, logger, config, "direct_trace_lookup", exc)
+        else:
+            evidence.direct_lookup = CapabilityAssessment(
+                "direct trace lookup",
+                CapabilityState.UNAVAILABLE,
+                "SIGNOZ_API_KEY is unset; direct lookup was not attempted",
+            )
+    else:
+        evidence.direct_lookup = CapabilityAssessment(
+            "direct trace lookup",
+            CapabilityState.NOT_CONFIGURED,
+            "SIGNOZ_TRACE_ID is unset",
+        )
+
+    search_hits: list[TraceSearchHit] = []
+    if config.agent_run_id:
+        if config.signoz_api_key:
+            try:
+                search_hits, raw_search = client.find_trace_by_run_id(config.agent_run_id)
+                raw_path = write_json_artifact(
+                    artifacts_dir / "trace_api_search_raw.json",
+                    raw_search,
+                )
+                evidence.raw_artifacts.append(raw_path)
+                evidence.attribute_search = CapabilityAssessment(
+                    "attribute-based trace search",
+                    CapabilityState.OBSERVED,
+                    f"agent.run_id matched {len(search_hits)} span row(s)",
+                )
+                evidence.observations["attribute_search"] = "succeeded"
+            except EmptySearchResults as exc:
+                evidence.attribute_search = CapabilityAssessment(
+                    "attribute-based trace search",
+                    CapabilityState.NOT_OBSERVED,
+                    str(exc),
+                )
+                record_probe_error(evidence, logger, config, "attribute_search", exc)
+            except Exception as exc:
+                evidence.attribute_search = CapabilityAssessment(
+                    "attribute-based trace search",
+                    CapabilityState.FAILED,
+                    f"{exc.__class__.__name__}: {exc}",
+                )
+                record_probe_error(evidence, logger, config, "attribute_search", exc)
         else:
             evidence.attribute_search = CapabilityAssessment(
                 "attribute-based trace search",
-                CapabilityState.NOT_CONFIGURED,
-                "TRACEGUARD_AGENT_RUN_ID is unset",
+                CapabilityState.UNAVAILABLE,
+                "SIGNOZ_API_KEY is unset; attribute search was not attempted",
             )
+    else:
+        evidence.attribute_search = CapabilityAssessment(
+            "attribute-based trace search",
+            CapabilityState.NOT_CONFIGURED,
+            "TRACEGUARD_AGENT_RUN_ID is unset",
+        )
 
-        if trace is None:
-            raise TraceNotFound(
-                "No trace was retrieved. Set SIGNOZ_TRACE_ID or TRACEGUARD_AGENT_RUN_ID."
+    if trace is None and search_hits:
+        try:
+            trace, raw_trace = client.get_trace(search_hits[0].trace_id)
+            raw_path = write_json_artifact(
+                artifacts_dir / "trace_api_waterfall_from_search_raw.json",
+                raw_trace,
             )
+            trace.raw_artifact = raw_path
+            evidence.raw_artifacts.append(raw_path)
+            evidence.observations["retrieval_by_search_result"] = "succeeded"
+        except Exception as exc:
+            record_probe_error(evidence, logger, config, "retrieval_by_search_result", exc)
 
-        evidence.trace = trace
-        evidence.field_assessments = trace.field_assessments()
-        evidence.response_classification = "complete structured telemetry"
+    if trace is None:
+        evidence.response_classification = "not observed"
         evidence.deterministic_evaluation = CapabilityAssessment(
             "suitable for deterministic evaluation",
-            CapabilityState.OBSERVED,
-            "required Gate 2 fields are exposed as structured span data",
-        )
-        evidence.human_explanation = CapabilityAssessment(
-            "suitable for human explanation",
-            CapabilityState.OBSERVED,
-            "structured fields can be rendered or explained later",
-        )
-        evidence.preserves_multiple_spans = CapabilityAssessment(
-            "preserves multiple spans",
-            CapabilityState.NOT_OBSERVED if len(trace.spans) == 1 else CapabilityState.OBSERVED,
-            f"retrieved {len(trace.spans)} span(s); Gate 1A emits one span",
-        )
-        evidence.preserves_parent_child = CapabilityAssessment(
-            "preserves parent-child relationships",
-            CapabilityState.OBSERVED,
-            "parent_span_id field is present; root span uses empty string",
+            CapabilityState.NOT_OBSERVED,
+            "no trace was retrieved",
         )
         evidence.error_behavior = CapabilityAssessment(
             "error behavior",
-            CapabilityState.OBSERVED,
-            "HTTP auth/not-found/schema failures map to custom exceptions",
+            CapabilityState.OBSERVED if evidence.errors else CapabilityState.NOT_OBSERVED,
+            "operation errors are recorded independently" if evidence.errors else "",
         )
-        evidence.response_stability = CapabilityAssessment(
-            "response stability",
-            CapabilityState.OBSERVED,
-            "schema verified against local SigNoz v0.133.0 source and live response",
-        )
-        normalized_path = write_json_artifact(
-            artifacts_dir / "trace_api_normalized.json",
-            trace.to_dict(),
-        )
-        evidence.raw_artifacts.append(normalized_path)
-    except Exception as exc:
-        evidence.available = evidence.available or isinstance(exc, EmptySearchResults)
-        evidence.errors.append(f"{exc.__class__.__name__}: {exc}")
-        evidence.error_behavior = CapabilityAssessment(
-            "error behavior",
-            CapabilityState.OBSERVED,
-            f"{exc.__class__.__name__}: {exc}",
-        )
-        logger.error(
-            "trace_api_probe_failed",
-            extra={
-                "_source": Source.TRACE_API.value,
-                "_operation": "run_trace_api_probe",
-                "_error_category": exc.__class__.__name__,
-            },
-            exc_info=config.debug,
-        )
+        return evidence
+
+    evidence.trace = trace
+    evidence.field_assessments = trace.field_assessments()
+    evidence.response_classification = classify_trace_structure(trace)
+    evidence.deterministic_evaluation = deterministic_assessment(trace)
+    evidence.human_explanation = CapabilityAssessment(
+        "suitable for human explanation",
+        CapabilityState.OBSERVED,
+        "structured fields can be rendered or explained later",
+    )
+    evidence.preserves_multiple_spans, evidence.preserves_parent_child = (
+        relationship_capabilities(trace)
+    )
+    evidence.error_behavior = CapabilityAssessment(
+        "error behavior",
+        CapabilityState.OBSERVED,
+        "HTTP auth/not-found/schema failures map to custom exceptions and operation errors are retained",
+    )
+    evidence.response_stability = CapabilityAssessment(
+        "response stability",
+        CapabilityState.NOT_OBSERVED,
+        "not tested by the Trace API probe",
+    )
+    normalized_path = write_json_artifact(
+        artifacts_dir / "trace_api_normalized.json",
+        trace.to_dict(),
+    )
+    evidence.raw_artifacts.append(normalized_path)
 
     return evidence
+
+
+def record_probe_error(
+    evidence: ProbeEvidence,
+    logger: logging.Logger,
+    config: Gate2Config,
+    operation: str,
+    exc: Exception,
+) -> None:
+    evidence.errors.append(f"{operation}: {exc.__class__.__name__}: {exc}")
+    evidence.observations[operation] = f"failed: {exc.__class__.__name__}"
+    logger.error(
+        "trace_api_operation_failed",
+        extra={
+            "_source": Source.TRACE_API.value,
+            "_operation": operation,
+            "_error_category": exc.__class__.__name__,
+        },
+        exc_info=config.debug,
+    )
 
 
 def print_api_probe(evidence: ProbeEvidence) -> None:

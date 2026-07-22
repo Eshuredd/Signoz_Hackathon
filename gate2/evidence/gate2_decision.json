@@ -1,0 +1,23 @@
+{
+  "sanitized": true,
+  "decision": "HYBRID_REQUIRES_MORE_EVIDENCE",
+  "provisional_evaluator_source": "SigNoz Trace API",
+  "reason": "The Trace API implementation can serve as the provisional structured retrieval path when it retrieves a trace with all required fields, but MCP could not be runtime-tested in this correction run because the supported Foundry MCP attempt failed before startup due to Docker being unavailable.",
+  "mcp_authoritative_requires": [
+    "MCP endpoint reachable",
+    "initialize succeeds",
+    "notifications/initialized succeeds where required",
+    "tools/list succeeds",
+    "trace-related tools discovered from tools/list",
+    "direct lookup or attribute-search workflow succeeds",
+    "trace_id, span_id, parent_span_id, span name, timestamps, duration, status, complete attributes, and resource attributes are available",
+    "valid relationship fixture proves multiple spans and child-parent preservation",
+    "response is structured and machine-readable",
+    "no LLM reconstruction, invented fields, unresolved workflow errors, or unstable repeated responses"
+  ],
+  "exit_code_policy": {
+    "0": "completed evidence-based comparison",
+    "1": "Trace API unusable or Gate 2 cannot proceed",
+    "2": "Trace API provisional source works but MCP remains unresolved"
+  }
+}

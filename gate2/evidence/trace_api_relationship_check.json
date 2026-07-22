@@ -1,0 +1,24 @@
+{
+  "sanitized": true,
+  "relationship_fixture": {
+    "sender": "gate2/relationship_fixture.py",
+    "span_tree": [
+      "gate2.test.root",
+      "gate2.test.child"
+    ],
+    "telemetry_type": "valid OpenTelemetry trace",
+    "gate3_scope": false
+  },
+  "required_validation": [
+    "both spans have the same trace_id",
+    "child parent_span_id equals root span_id",
+    "direct trace retrieval returns both spans",
+    "the normalized Trace model preserves the relationship"
+  ],
+  "root_only_policy": {
+    "preserves_multiple_spans": "not observed",
+    "preserves_parent_child": "not observed",
+    "reason": "an empty parent_span_id on a root span proves root-parent field representation only"
+  },
+  "current_local_runtime_result": "not executed during this correction because SigNoz and Docker were unavailable"
+}

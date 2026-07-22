@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-07-22T16:48:27+05:30",
+  "sanitized": true,
+  "foundryctl": {
+    "version": "v0.2.15",
+    "commit": "32a37e0"
+  },
+  "local_services_during_correction": {
+    "docker_daemon": "unavailable: Cannot connect to Docker daemon at /Users/dspl_012/.docker/run/docker.sock",
+    "signoz_api_http_localhost_8080": "not reachable during this correction run",
+    "mcp_health_http_localhost_8000_livez": "not reachable during this correction run"
+  },
+  "non_secret_environment": {
+    "SIGNOZ_API_KEY": "<unset>",
+    "SIGNOZ_TRACE_ID": "<unset>",
+    "TRACEGUARD_AGENT_RUN_ID": "<unset>",
+    "SIGNOZ_BASE_URL": "http://localhost:8080 default",
+    "SIGNOZ_MCP_URL": "http://localhost:8000/mcp default",
+    "SIGNOZ_MCP_HEALTH_URL": "http://localhost:8000/livez default"
+  },
+  "official_docs_inspected": [
+    "https://signoz.io/docs/ai/signoz-mcp-server/",
+    "https://signoz.io/docs/install/docker/",
+    "https://github.com/SigNoz/signoz-mcp-server"
+  ],
+  "notes": [
+    "This file records the sanitized local environment observed while correcting Gate 2.",
+    "No API keys, tokens, credentials, or raw telemetry payloads are included."
+  ]
+}
