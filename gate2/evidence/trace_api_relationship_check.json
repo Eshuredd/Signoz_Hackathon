@@ -1,24 +1,25 @@
 {
   "sanitized": true,
+  "captured_at": "2026-07-22T17:46:02+05:30",
   "relationship_fixture": {
     "sender": "gate2/relationship_fixture.py",
-    "span_tree": [
-      "gate2.test.root",
-      "gate2.test.child"
-    ],
     "telemetry_type": "valid OpenTelemetry trace",
-    "gate3_scope": false
+    "gate3_scope": false,
+    "trace_id": "c016eb21fead701dc090ed6b35b767ed",
+    "run_id": "gate2-live-1784722509",
+    "root_span_id": "19237c349d92d3b6",
+    "child_span_id": "c25e790505ab7648",
+    "child_parent_span_id": "19237c349d92d3b6"
   },
-  "required_validation": [
-    "both spans have the same trace_id",
-    "child parent_span_id equals root span_id",
-    "direct trace retrieval returns both spans",
-    "the normalized Trace model preserves the relationship"
-  ],
+  "trace_api_relationship_result": {
+    "retrieved_from_signoz": false,
+    "preserves_multiple_spans": "not runtime-observed",
+    "preserves_parent_child": "not runtime-observed",
+    "reason": "SIGNOZ_API_KEY was unset, so direct Trace API retrieval could not run"
+  },
   "root_only_policy": {
     "preserves_multiple_spans": "not observed",
     "preserves_parent_child": "not observed",
     "reason": "an empty parent_span_id on a root span proves root-parent field representation only"
-  },
-  "current_local_runtime_result": "not executed during this correction because SigNoz and Docker were unavailable"
+  }
 }

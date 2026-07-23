@@ -1,0 +1,19 @@
+{
+  "sanitized": true,
+  "captured_at": "2026-07-22T17:46:02+05:30",
+  "stability_result": "not runtime-observed",
+  "required_comparison": [
+    "same trace ID",
+    "same span count",
+    "same span IDs",
+    "same parent-child relationships",
+    "same span names",
+    "same required field availability",
+    "same attribute keys",
+    "same resource attribute keys"
+  ],
+  "excluded_values": [
+    "retrieved_at"
+  ],
+  "reason": "MCP initialize failed before any trace retrieval workflow could run"
+}

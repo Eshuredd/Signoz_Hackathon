@@ -1,0 +1,16 @@
+{
+  "sanitized": true,
+  "captured_at": "2026-07-22T17:46:02+05:30",
+  "relationship_fixture_exported": true,
+  "fixture": {
+    "trace_id": "c016eb21fead701dc090ed6b35b767ed",
+    "root_span_id": "19237c349d92d3b6",
+    "child_span_id": "c25e790505ab7648",
+    "child_parent_span_id": "19237c349d92d3b6"
+  },
+  "mcp_relationship_result": {
+    "preserves_multiple_spans": "not runtime-observed",
+    "preserves_parent_child": "not runtime-observed",
+    "reason": "MCP initialize failed before tools/list or trace retrieval"
+  }
+}

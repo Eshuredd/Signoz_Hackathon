@@ -610,6 +610,30 @@ def run_trace_api_probe(
     evidence.field_assessments = trace.field_assessments()
     evidence.response_classification = classify_trace_structure(trace)
     evidence.deterministic_evaluation = deterministic_assessment(trace)
+    if trace.has_all_required_fields() and (
+        evidence.attribute_search.state == CapabilityState.OBSERVED
+        or not config.agent_run_id
+    ) and (
+        evidence.direct_lookup.state == CapabilityState.OBSERVED
+        or evidence.observations.get("retrieval_by_search_result") == "succeeded"
+    ):
+        evidence.retrieval_workflow = CapabilityAssessment(
+            "retrieval workflow completeness",
+            CapabilityState.OBSERVED,
+            "direct retrieval and configured agent.run_id discovery were observed",
+        )
+    elif trace.has_all_required_fields():
+        evidence.retrieval_workflow = CapabilityAssessment(
+            "retrieval workflow completeness",
+            CapabilityState.NOT_OBSERVED,
+            "direct retrieval is usable, but configured agent.run_id discovery was not fully observed",
+        )
+    else:
+        evidence.retrieval_workflow = CapabilityAssessment(
+            "retrieval workflow completeness",
+            CapabilityState.FAILED,
+            "retrieved trace did not contain all required fields",
+        )
     evidence.human_explanation = CapabilityAssessment(
         "suitable for human explanation",
         CapabilityState.OBSERVED,

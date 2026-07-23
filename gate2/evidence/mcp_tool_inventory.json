@@ -1,0 +1,17 @@
+{
+  "sanitized": true,
+  "captured_at": "2026-07-22T17:46:02+05:30",
+  "mcp_health": "ok",
+  "initialize": {
+    "status": "failed",
+    "failed_stage": "mcp_initialize",
+    "error": "HTTP 401: Authorization or SIGNOZ-API-KEY header required",
+    "session_id_issued": "not observed"
+  },
+  "tools_list": {
+    "status": "not runtime-observed",
+    "actual_tool_names": [],
+    "input_schema_summaries": [],
+    "reason": "tools/list cannot be called until initialize succeeds"
+  }
+}

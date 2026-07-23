@@ -374,6 +374,12 @@ class ProbeEvidence:
             CapabilityState.NOT_OBSERVED,
         )
     )
+    retrieval_workflow: CapabilityAssessment = field(
+        default_factory=lambda: CapabilityAssessment(
+            "retrieval workflow completeness",
+            CapabilityState.NOT_OBSERVED,
+        )
+    )
     response_classification: str = "not observed"
     raw_artifacts: list[str] = field(default_factory=list)
     commands_attempted: list[str] = field(default_factory=list)
@@ -381,6 +387,7 @@ class ProbeEvidence:
     installed_signoz_version: str | None = None
     errors: list[str] = field(default_factory=list)
     blocker: str | None = None
+    failed_stage: str | None = None
     smallest_unblock: str | None = None
     mcp_timebox_reached: bool = False
     observations: dict[str, Any] = field(default_factory=dict)
@@ -402,6 +409,7 @@ class ProbeEvidence:
             "authentication_required": self.authentication_required.to_dict(),
             "error_behavior": self.error_behavior.to_dict(),
             "response_stability": self.response_stability.to_dict(),
+            "retrieval_workflow": self.retrieval_workflow.to_dict(),
             "response_classification": self.response_classification,
             "raw_artifacts": self.raw_artifacts,
             "commands_attempted": self.commands_attempted,
@@ -409,6 +417,7 @@ class ProbeEvidence:
             "installed_signoz_version": self.installed_signoz_version,
             "errors": self.errors,
             "blocker": self.blocker,
+            "failed_stage": self.failed_stage,
             "smallest_unblock": self.smallest_unblock,
             "mcp_timebox_reached": self.mcp_timebox_reached,
             "observations": self.observations,

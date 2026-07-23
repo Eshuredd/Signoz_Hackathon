@@ -52,6 +52,10 @@ def evidence(source: Source, trace: Trace | None, available: bool = True) -> Pro
         item.deterministic_evaluation = deterministic_assessment(trace)
         item.preserves_multiple_spans, item.preserves_parent_child = relationship_capabilities(trace)
         item.direct_lookup = CapabilityAssessment("direct trace lookup", CapabilityState.OBSERVED)
+        item.retrieval_workflow = CapabilityAssessment(
+            "retrieval workflow completeness",
+            CapabilityState.OBSERVED,
+        )
     return item
 
 
@@ -126,3 +130,18 @@ def test_root_only_mcp_cannot_be_authoritative() -> None:
     report = compare_sources(trace_api, mcp)
 
     assert report.recommendation == TRACE_API_AUTHORITATIVE
+
+
+def test_configured_trace_api_attribute_search_unresolved_keeps_comparison_provisional() -> None:
+    trace_api = evidence(Source.TRACE_API, complete_trace())
+    trace_api.retrieval_workflow = CapabilityAssessment(
+        "retrieval workflow completeness",
+        CapabilityState.NOT_OBSERVED,
+        "configured agent.run_id discovery unresolved",
+    )
+    mcp = evidence(Source.MCP, complete_trace(), available=True)
+
+    report = compare_sources(trace_api, mcp)
+
+    assert report.recommendation == HYBRID_REQUIRES_MORE_EVIDENCE
+    assert report.provisional_evaluator_source == Source.TRACE_API.value

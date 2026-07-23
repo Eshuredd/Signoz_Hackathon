@@ -1,0 +1,22 @@
+{
+  "sanitized": true,
+  "captured_at": "2026-07-22T17:46:02+05:30",
+  "source": "SigNoz Trace API",
+  "health": "ok",
+  "version": "v0.133.0",
+  "authentication_required": "observed",
+  "direct_lookup": {
+    "status": "not attempted",
+    "reason": "SIGNOZ_API_KEY was unset"
+  },
+  "agent_run_id_search": {
+    "status": "not attempted",
+    "reason": "SIGNOZ_API_KEY was unset"
+  },
+  "retrieval_workflow_completeness": "not observed",
+  "live_ids_available": {
+    "trace_id": "92fd5c1f5beb68bce5cfcb39b6c4670d",
+    "agent_run_id": "aa129fc0-0501-4f14-8df6-833caa5239e7"
+  },
+  "smallest_next_action": "Export SIGNOZ_API_KEY and rerun the Trace API probe."
+}

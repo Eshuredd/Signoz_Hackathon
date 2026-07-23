@@ -1,0 +1,19 @@
+{
+  "sanitized": true,
+  "captured_at": "2026-07-22T17:46:02+05:30",
+  "source": "SigNoz MCP",
+  "runtime_state": "MCP health succeeded, initialize failed with authentication error",
+  "fields": {
+    "trace_id": "not runtime-observed",
+    "span_id": "not runtime-observed",
+    "parent_span_id": "not runtime-observed",
+    "span_name": "not runtime-observed",
+    "start_time": "not runtime-observed",
+    "end_time": "not runtime-observed",
+    "duration": "not runtime-observed",
+    "status": "not runtime-observed",
+    "complete attributes": "not runtime-observed",
+    "resource attributes": "not runtime-observed"
+  },
+  "reason": "No MCP tool response was available because mcp_initialize returned HTTP 401 without SIGNOZ_API_KEY."
+}

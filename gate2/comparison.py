@@ -48,6 +48,11 @@ def build_rows(trace_api: ProbeEvidence, mcp: ProbeEvidence) -> list[ComparisonR
             trace_api.attribute_search.to_cell(),
             mcp.attribute_search.to_cell(),
         ),
+        ComparisonRow(
+            "retrieval workflow completeness",
+            trace_api.retrieval_workflow.to_cell(),
+            mcp.retrieval_workflow.to_cell(),
+        ),
     ]
 
     trace_api_fields = field_map(trace_api.field_assessments)
@@ -150,6 +155,19 @@ def recommend(
             Source.TRACE_API.value,
         )
 
+    if trace_api.retrieval_workflow.state not in {
+        CapabilityState.OBSERVED,
+        CapabilityState.NOT_CONFIGURED,
+    }:
+        return (
+            HYBRID_REQUIRES_MORE_EVIDENCE,
+            (
+                "Trace API direct retrieval is usable provisionally, but the configured "
+                "agent.run_id discovery workflow was not fully observed."
+            ),
+            Source.TRACE_API.value,
+        )
+
     return (
         TRACE_API_AUTHORITATIVE,
         (
@@ -168,6 +186,7 @@ def mcp_can_be_authoritative(mcp: ProbeEvidence) -> bool:
         and mcp.response_classification == "complete structured telemetry"
         and mcp.deterministic_evaluation.state == CapabilityState.OBSERVED
         and mcp.response_stability.state == CapabilityState.OBSERVED
+        and mcp.retrieval_workflow.state == CapabilityState.OBSERVED
         and mcp.preserves_multiple_spans.state == CapabilityState.OBSERVED
         and mcp.preserves_parent_child.state == CapabilityState.OBSERVED
         and (
@@ -233,6 +252,8 @@ def render_report(report: ComparisonReport) -> str:
 
     if report.mcp.blocker:
         lines.extend(["", "## MCP Blocker", "", report.mcp.blocker])
+    if report.mcp.failed_stage:
+        lines.extend(["", "MCP failed stage:", "", report.mcp.failed_stage])
     if report.mcp.smallest_unblock:
         lines.extend(["", "Smallest unblock:", "", report.mcp.smallest_unblock])
 
