@@ -1,7 +1,10 @@
 {
-  "sanitized": true,
-  "captured_at": "2026-07-22T17:46:02+05:30",
-  "stability_result": "not runtime-observed",
+  "captured_at": "2026-07-23T14:22:29+05:30",
+  "excluded_values": [
+    "retrieved_at"
+  ],
+  "failed_stage": "mcp_initialize",
+  "reason": "MCP initialize failed before any repeated trace retrieval workflow could run.",
   "required_comparison": [
     "same trace ID",
     "same span count",
@@ -12,8 +15,6 @@
     "same attribute keys",
     "same resource attribute keys"
   ],
-  "excluded_values": [
-    "retrieved_at"
-  ],
-  "reason": "MCP initialize failed before any trace retrieval workflow could run"
+  "sanitized": true,
+  "stability_result": "unavailable"
 }

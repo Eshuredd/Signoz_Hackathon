@@ -9,9 +9,9 @@ This gate only evaluates retrieval evidence. It does not implement Gate 3, malfo
 
 ## Current Status
 
-Gate 2A is implemented but requires `SIGNOZ_API_KEY` for live retrieval. In the latest live run, SigNoz health and version succeeded, but direct lookup and `agent.run_id` search were not attempted because no service-account key was available.
+Gate 2A is implemented but requires `SIGNOZ_API_KEY` for live retrieval. In the latest live run on 2026-07-23, SigNoz health and version succeeded, but direct lookup and `agent.run_id` search were not attempted because `SIGNOZ_API_KEY` was `<unset>` in the repository-root `.env`.
 
-Gate 2B is implemented with Streamable HTTP request/notification separation, MCP session ID reuse, SSE event parsing, tool discovery from `tools/list`, and search-to-details retrieval. In the latest live run, MCP health succeeded, but `initialize` failed with HTTP `401` because no `SIGNOZ_API_KEY` was available.
+Gate 2B is implemented with Streamable HTTP request/notification separation, MCP session ID reuse, SSE event parsing, exact MCP failure-stage preservation, conservative structured search-result parsing, tool discovery from `tools/list`, schema-derived arguments, direct/search workflow independence, and search-to-details retrieval. In the latest live run, MCP health succeeded, but `initialize` failed with HTTP `401` because `SIGNOZ_API_KEY` was `<unset>`.
 
 Current decision for this no-key live run:
 
@@ -82,18 +82,18 @@ The repository-root `.env` is ignored by Git. `.env.example` is safe to commit b
 Gate 1A generated:
 
 ```text
-TRACEGUARD_AGENT_RUN_ID=aa129fc0-0501-4f14-8df6-833caa5239e7
-SIGNOZ_TRACE_ID=92fd5c1f5beb68bce5cfcb39b6c4670d
+TRACEGUARD_AGENT_RUN_ID=855414bd-3493-4e71-bada-a4bf4b872b26
+SIGNOZ_TRACE_ID=c5b74d8d9f7dd08f9ee32af3bf2aa8e6
 ```
 
 Relationship fixture generated:
 
 ```text
-TRACEGUARD_GATE2_FIXTURE_RUN_ID=gate2-live-1784722509
-relationship trace_id=c016eb21fead701dc090ed6b35b767ed
-root_span_id=19237c349d92d3b6
-child_span_id=c25e790505ab7648
-child_parent_span_id=19237c349d92d3b6
+TRACEGUARD_GATE2_FIXTURE_RUN_ID=gate2-c74e4df7-1924-4392-a238-aafe707c666a
+relationship trace_id=5b14a548f30dd545086c89fec0bfb915
+root_span_id=74efe51568e368a6
+child_span_id=078f8ca44e7bb9cd
+child_parent_span_id=74efe51568e368a6
 ```
 
 The relationship fixture is valid two-span telemetry:
@@ -127,6 +127,17 @@ The MCP search workflow is:
 
 Actual MCP tools discovered in the latest live run: none, because `initialize` failed before `tools/list`.
 
+Actual MCP input schema summaries observed in the latest live run: none, because `tools/list` was not reached.
+
+Latest MCP results:
+
+- Direct lookup: unavailable; details tool was not reached.
+- Search-to-details: unavailable; search tool was not reached.
+- Relationship retrieval: unavailable; `initialize` failed first.
+- Stability check: unavailable; no repeated details retrieval was possible.
+- Exact failed stage: `mcp_initialize`.
+- Blocker: MCP endpoint was reachable, but `initialize` returned HTTP `401` requiring `Authorization` or `SIGNOZ-API-KEY`.
+
 ## Run
 
 Install dependencies:
@@ -138,29 +149,32 @@ python3 -m pip install -r gate2/requirements.txt
 Trace API probe:
 
 ```bash
-SIGNOZ_TRACE_ID=92fd5c1f5beb68bce5cfcb39b6c4670d \
-TRACEGUARD_AGENT_RUN_ID=aa129fc0-0501-4f14-8df6-833caa5239e7 \
 python3 gate2/signoz_api_client.py
 ```
 
 MCP probe:
 
 ```bash
-SIGNOZ_TRACE_ID=92fd5c1f5beb68bce5cfcb39b6c4670d \
-TRACEGUARD_AGENT_RUN_ID=aa129fc0-0501-4f14-8df6-833caa5239e7 \
 python3 gate2/mcp_probe.py
 ```
 
 Full comparison:
 
 ```bash
-SIGNOZ_TRACE_ID=92fd5c1f5beb68bce5cfcb39b6c4670d \
-TRACEGUARD_AGENT_RUN_ID=aa129fc0-0501-4f14-8df6-833caa5239e7 \
 python3 gate2/main.py
 echo $?
 ```
 
 Latest no-key full comparison exit code: `1`.
+
+Latest Trace API results:
+
+- Health: `ok`.
+- Version: `v0.133.0`.
+- Direct lookup: unavailable because `SIGNOZ_API_KEY` was `<unset>`.
+- `agent.run_id` discovery: unavailable because `SIGNOZ_API_KEY` was `<unset>`.
+- Relationship retrieval: unavailable because `SIGNOZ_API_KEY` was `<unset>`.
+- Response classification: not observed.
 
 Exit codes:
 
@@ -201,4 +215,4 @@ Unit tests do not require a running SigNoz instance:
 python3 -m pytest tests/gate2 -v
 ```
 
-Latest result: `55 passed`.
+Latest result: `86 passed`, `0 failed`, `0 skipped`.

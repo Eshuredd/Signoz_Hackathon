@@ -184,6 +184,43 @@ def test_tool_arguments_derive_from_input_schema() -> None:
     assert search_args["limit"] == 10
 
 
+def test_search_arguments_use_required_query_field() -> None:
+    search_tool = {
+        "inputSchema": {
+            "properties": {
+                "filter": {"type": "string"},
+                "query": {"type": "string"},
+            },
+            "required": ["query"],
+        }
+    }
+
+    assert args_for_trace_search(search_tool, "run-1") == {"query": "agent.run_id = 'run-1'"}
+
+
+def test_search_arguments_reject_ambiguous_or_unsent_required_fields() -> None:
+    ambiguous = {
+        "inputSchema": {
+            "properties": {
+                "filter": {"type": "string"},
+                "query": {"type": "string"},
+            },
+            "required": ["filter", "query"],
+        }
+    }
+    missing_required = {
+        "inputSchema": {
+            "properties": {"filter": {"type": "string"}},
+            "required": ["query"],
+        }
+    }
+
+    with pytest.raises(MCPToolUnavailable):
+        args_for_trace_search(ambiguous, "run-1")
+    with pytest.raises(MCPToolUnavailable):
+        args_for_trace_search(missing_required, "run-1")
+
+
 def test_initialize_captures_session_id_and_reuses_it() -> None:
     client = MCPHttpClient(config(), DummyLogger())
     client.session = FakeSession(
@@ -720,6 +757,31 @@ def test_run_mcp_probe_preserves_stability_failure_stage(monkeypatch: pytest.Mon
 
     assert evidence.response_stability.state == CapabilityState.FAILED
     assert evidence.failed_stage == "mcp_stability_check"
+    assert any(error.startswith("mcp_stability_check:") for error in evidence.errors)
+
+
+def test_run_mcp_probe_stability_failure_is_not_overwritten_by_search_success(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client = ProbeClient(
+        [
+            complete_trace_response("a" * 32),
+            complete_trace_response("b" * 32),
+            {"result": {"structuredContent": {"results": [{"trace_id": "a" * 32, "attributes": {"agent.run_id": "run-1"}}]}}},
+            complete_trace_response("a" * 32),
+            complete_trace_response("a" * 32),
+        ]
+    )
+    monkeypatch.setattr("mcp_probe.MCPHttpClient", lambda config, logger: client)
+    monkeypatch.setattr("mcp_probe.fetch_signoz_version", lambda config: "test")
+
+    evidence = run_mcp_probe(config(), DummyLogger(), tmp_path)
+
+    assert evidence.direct_lookup.state == CapabilityState.OBSERVED
+    assert evidence.attribute_search.state == CapabilityState.OBSERVED
+    assert evidence.response_stability.state == CapabilityState.FAILED
+    assert evidence.failed_stage == "mcp_stability_check"
 
 
 def test_run_mcp_probe_preserves_relationship_validation_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -772,3 +834,26 @@ def test_run_mcp_probe_search_fails_while_direct_succeeds(monkeypatch: pytest.Mo
     assert evidence.attribute_search.state == CapabilityState.FAILED
     assert evidence.trace is not None
     assert evidence.retrieval_workflow.state == CapabilityState.OBSERVED
+
+
+def test_run_mcp_probe_reports_direct_search_trace_mismatch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    client = ProbeClient(
+        [
+            complete_trace_response("a" * 32),
+            complete_trace_response("a" * 32),
+            {"result": {"structuredContent": {"results": [{"trace_id": "b" * 32, "attributes": {"agent.run_id": "run-1"}}]}}},
+            complete_trace_response("b" * 32),
+            complete_trace_response("b" * 32),
+        ]
+    )
+    monkeypatch.setattr("mcp_probe.MCPHttpClient", lambda config, logger: client)
+    monkeypatch.setattr("mcp_probe.fetch_signoz_version", lambda config: "test")
+
+    evidence = run_mcp_probe(config(), DummyLogger(), tmp_path)
+
+    assert evidence.direct_lookup.state == CapabilityState.OBSERVED
+    assert evidence.attribute_search.state == CapabilityState.OBSERVED
+    assert evidence.retrieval_workflow.state == CapabilityState.FAILED
+    assert evidence.failed_stage == "mcp_details_from_search"
+    assert evidence.observations["mcp_direct_search_trace_id_match"] == "failed"
+    assert any(error.startswith("mcp_details_from_search:") for error in evidence.errors)

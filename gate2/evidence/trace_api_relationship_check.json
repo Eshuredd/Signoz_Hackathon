@@ -1,25 +1,27 @@
 {
-  "sanitized": true,
-  "captured_at": "2026-07-22T17:46:02+05:30",
+  "captured_at": "2026-07-23T14:22:29+05:30",
   "relationship_fixture": {
+    "child_parent_span_id": "74efe51568e368a6",
+    "child_span_id": "078f8ca44e7bb9cd",
+    "gate3_scope": false,
+    "local_parent_link_valid": true,
+    "root_span_id": "74efe51568e368a6",
+    "run_id": "gate2-c74e4df7-1924-4392-a238-aafe707c666a",
     "sender": "gate2/relationship_fixture.py",
     "telemetry_type": "valid OpenTelemetry trace",
-    "gate3_scope": false,
-    "trace_id": "c016eb21fead701dc090ed6b35b767ed",
-    "run_id": "gate2-live-1784722509",
-    "root_span_id": "19237c349d92d3b6",
-    "child_span_id": "c25e790505ab7648",
-    "child_parent_span_id": "19237c349d92d3b6"
-  },
-  "trace_api_relationship_result": {
-    "retrieved_from_signoz": false,
-    "preserves_multiple_spans": "not runtime-observed",
-    "preserves_parent_child": "not runtime-observed",
-    "reason": "SIGNOZ_API_KEY was unset, so direct Trace API retrieval could not run"
+    "trace_id": "5b14a548f30dd545086c89fec0bfb915"
   },
   "root_only_policy": {
     "preserves_multiple_spans": "not observed",
     "preserves_parent_child": "not observed",
-    "reason": "an empty parent_span_id on a root span proves root-parent field representation only"
+    "reason": "An empty parent_span_id on a root span proves root-parent field representation only."
+  },
+  "sanitized": true,
+  "trace_api_relationship_result": {
+    "preserves_multiple_spans": "not observed",
+    "preserves_parent_child": "not observed",
+    "reason": "SIGNOZ_API_KEY was unset in the repository-root .env, so authenticated Trace API retrieval could not run.",
+    "retrieved_from_signoz": false,
+    "two_expected_spans_returned": "not observed"
   }
 }

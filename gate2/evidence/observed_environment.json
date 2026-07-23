@@ -1,46 +1,54 @@
 {
-  "captured_at": "2026-07-22T17:46:02+05:30",
-  "sanitized": true,
-  "foundryctl": {
-    "version": "v0.2.15",
-    "commit": "32a37e0"
+  "captured_at": "2026-07-23T14:22:29+05:30",
+  "configuration": {
+    "SIGNOZ_API_KEY": "<unset>",
+    "SIGNOZ_BASE_URL": "http://localhost:8080",
+    "SIGNOZ_DEBUG": false,
+    "SIGNOZ_MCP_HEALTH_URL": "http://localhost:8000/livez",
+    "SIGNOZ_MCP_URL": "http://localhost:8000/mcp",
+    "SIGNOZ_REQUEST_TIMEOUT_SECONDS": 10.0,
+    "repository_root_dotenv_loaded": true,
+    "selected_dotenv_path": "/Users/dspl_012/Desktop/Signoz_Hackathon/.env"
   },
   "docker": {
-    "daemon_available": true,
     "client_version": "29.4.3",
-    "server_version": "29.4.3",
     "compose_version": "v5.1.4",
-    "operating_system": "Docker Desktop"
-  },
-  "signoz": {
-    "base_url": "http://localhost:8080",
-    "health": "ok",
-    "version": "v0.133.0",
-    "enterprise": "Y",
-    "setup_completed": true
-  },
-  "mcp": {
-    "health_url": "http://localhost:8000/livez",
-    "health_response": "ok",
-    "container": "signoz-mcp",
-    "image": "signoz/signoz-mcp-server:latest",
-    "image_digest": "signoz/signoz-mcp-server@sha256:75327a2cea4ba7762e989d911edda62a126cb8d0f895b8940c7466b2e0ec514c",
-    "server_version_from_logs": "v0.9.0",
-    "docker_health_status": "unhealthy",
-    "docker_health_note": "Foundry-generated healthcheck invokes wget, but wget is absent in the MCP image. External /livez returned ok."
+    "daemon_available": true,
+    "operating_system": "Docker Desktop",
+    "server_version": "29.4.3"
   },
   "live_ids": {
-    "gate1a_trace_id": "92fd5c1f5beb68bce5cfcb39b6c4670d",
-    "gate1a_agent_run_id": "aa129fc0-0501-4f14-8df6-833caa5239e7",
-    "relationship_trace_id": "c016eb21fead701dc090ed6b35b767ed",
-    "relationship_run_id": "gate2-live-1784722509",
-    "relationship_root_span_id": "19237c349d92d3b6",
-    "relationship_child_span_id": "c25e790505ab7648",
-    "relationship_child_parent_span_id": "19237c349d92d3b6"
+    "gate1a_agent_run_id": "855414bd-3493-4e71-bada-a4bf4b872b26",
+    "gate1a_trace_id": "c5b74d8d9f7dd08f9ee32af3bf2aa8e6",
+    "relationship_child_parent_span_id": "74efe51568e368a6",
+    "relationship_child_span_id": "078f8ca44e7bb9cd",
+    "relationship_parent_link_valid_locally": true,
+    "relationship_root_span_id": "74efe51568e368a6",
+    "relationship_run_id": "gate2-c74e4df7-1924-4392-a238-aafe707c666a",
+    "relationship_trace_id": "5b14a548f30dd545086c89fec0bfb915"
   },
-  "non_secret_environment": {
-    "SIGNOZ_API_KEY": "<unset during live verification>",
-    "SIGNOZ_TRACE_ID": "<set to live Gate 1A trace ID>",
-    "TRACEGUARD_AGENT_RUN_ID": "<set to live Gate 1A run ID>"
+  "mcp": {
+    "container": "signoz-mcp",
+    "docker_health_note": "Container healthcheck invokes wget, but wget is absent in the MCP image. External /livez returned ok, so this is not classified as an MCP protocol failure.",
+    "docker_health_status": "unhealthy",
+    "health_response": "ok",
+    "health_url": "http://localhost:8000/livez",
+    "image": "signoz/signoz-mcp-server:latest",
+    "image_digest": "sha256:75327a2cea4ba7762e989d911edda62a126cb8d0f895b8940c7466b2e0ec514c",
+    "server_version_from_logs": "v0.9.0"
+  },
+  "sanitized": true,
+  "signoz": {
+    "base_url": "http://localhost:8080",
+    "enterprise": "Y",
+    "health": "ok",
+    "setup_completed": true,
+    "version": "v0.133.0"
+  },
+  "test_result": {
+    "command": "python3 -m pytest tests/gate2 -v",
+    "failed": 0,
+    "passed": 86,
+    "skipped": 0
   }
 }

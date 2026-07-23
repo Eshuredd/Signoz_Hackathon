@@ -1,17 +1,25 @@
 {
-  "sanitized": true,
-  "captured_at": "2026-07-22T17:46:02+05:30",
-  "mcp_health": "ok",
+  "captured_at": "2026-07-23T14:22:29+05:30",
   "initialize": {
-    "status": "failed",
-    "failed_stage": "mcp_initialize",
     "error": "HTTP 401: Authorization or SIGNOZ-API-KEY header required",
-    "session_id_issued": "not observed"
+    "failed_stage": "mcp_initialize",
+    "session_id_issued": "not observed",
+    "status": "failed"
+  },
+  "mcp_health": "ok",
+  "mcp_server_version": "v0.9.0",
+  "sanitized": true,
+  "tool_selection_policy": {
+    "preferred_details_tool": "signoz_get_trace_details",
+    "preferred_search_tool": "signoz_search_traces",
+    "undocumented_aliases_allowed": false
   },
   "tools_list": {
-    "status": "not runtime-observed",
     "actual_tool_names": [],
     "input_schema_summaries": [],
-    "reason": "tools/list cannot be called until initialize succeeds"
+    "reason": "tools/list cannot be called until initialize succeeds",
+    "selected_trace_details_tool": null,
+    "selected_trace_search_tool": null,
+    "status": "not observed"
   }
 }

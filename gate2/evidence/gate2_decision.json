@@ -1,22 +1,24 @@
 {
-  "sanitized": true,
-  "captured_at": "2026-07-22T17:46:02+05:30",
+  "captured_at": "2026-07-23T14:22:29+05:30",
   "decision": "HYBRID_REQUIRES_MORE_EVIDENCE",
-  "provisional_evaluator_source": "none for this no-key live run",
-  "previous_provisional_source_when_keyed_trace_api_works": "SigNoz Trace API",
-  "full_comparison_exit_code": 1,
-  "reason": "Docker, SigNoz, and MCP were live, but SIGNOZ_API_KEY was not available. Trace API retrieval was not attempted, and MCP initialize failed with HTTP 401 before tools/list or telemetry retrieval.",
+  "exit_code_policy": {
+    "0": "Both interfaces were meaningfully tested and a final evidence-based source decision was produced.",
+    "1": "Trace API is unusable, authentication/configuration is invalid, or no usable source exists.",
+    "2": "Trace API is provisionally usable but MCP could not be meaningfully tested because of an external blocker."
+  },
   "failed_stage": "mcp_initialize",
-  "external_blocker": "service-account API key unavailable in shell",
+  "full_comparison_exit_code": 1,
   "gate2_fully_complete": false,
-  "smallest_next_action": "Export SIGNOZ_API_KEY and rerun unit tests, Trace API probe, MCP probe, and full comparison with the recorded live trace IDs.",
+  "mcp_blocker": "MCP endpoint was reachable, but mcp_initialize failed: HTTP 401; Authorization or SIGNOZ-API-KEY header required.",
+  "provisional_evaluator_source": "none",
+  "reason": "Trace API health/version succeeded, but authenticated retrieval was unavailable because SIGNOZ_API_KEY was unset. MCP /livez succeeded, but initialize returned HTTP 401 before tools/list or telemetry retrieval.",
+  "sanitized": true,
+  "smallest_next_action": "Set SIGNOZ_API_KEY in the ignored repository-root .env and rerun tests plus the Trace API, MCP, relationship, and full comparison probes.",
   "test_result": {
     "command": "python3 -m pytest tests/gate2 -v",
-    "result": "55 passed"
+    "failed": 0,
+    "passed": 86,
+    "skipped": 0
   },
-  "exit_code_policy": {
-    "0": "completed evidence-based comparison",
-    "1": "Trace API unusable, configuration invalid, or no authoritative/provisional source usable",
-    "2": "Trace API works provisionally but MCP remains unresolved because of an external blocker"
-  }
+  "trace_api_blocker": "SIGNOZ_API_KEY was unset in the repository-root .env, so authenticated Trace API retrieval could not run."
 }

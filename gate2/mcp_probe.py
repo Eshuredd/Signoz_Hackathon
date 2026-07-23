@@ -424,10 +424,29 @@ def run_mcp_probe(
             )
             evidence.errors.append(f"{stage}: {exc.__class__.__name__}: {exc}")
 
+        trace_id_mismatch = False
+        if details_trace is not None and search_trace is not None:
+            if details_trace.trace_id != search_trace.trace_id:
+                trace_id_mismatch = True
+                evidence.observations["mcp_direct_search_trace_id_match"] = "failed"
+                evidence.errors.append(
+                    "mcp_details_from_search: direct lookup trace_id did not match "
+                    "search-to-details trace_id"
+                )
+                if evidence.response_stability.state != CapabilityState.FAILED:
+                    evidence.failed_stage = "mcp_details_from_search"
+            else:
+                evidence.observations["mcp_direct_search_trace_id_match"] = "succeeded"
+
         trace = details_trace or search_trace
 
         if trace is None:
             evidence.failed_stage = failed_workflow_stages[-1] if failed_workflow_stages else "mcp_normalization"
+            if not any(error.startswith(f"{evidence.failed_stage}:") for error in evidence.errors):
+                evidence.errors.append(
+                    f"{evidence.failed_stage}: no MCP direct or search-to-details workflow "
+                    "returned a normalized trace"
+                )
             evidence.response_classification = "not observed"
             evidence.error_behavior = CapabilityAssessment(
                 "error behavior",
@@ -442,7 +461,7 @@ def run_mcp_probe(
             return evidence
 
         evidence.trace = trace
-        if evidence.response_stability.state != CapabilityState.FAILED:
+        if evidence.response_stability.state != CapabilityState.FAILED and not trace_id_mismatch:
             evidence.failed_stage = "mcp_normalization"
         evidence.field_assessments = trace.field_assessments()
         evidence.response_classification = classify_trace_structure(trace)
@@ -461,7 +480,13 @@ def run_mcp_probe(
             and evidence.response_stability.state != CapabilityState.FAILED
         ):
             evidence.failed_stage = "mcp_relationship_validation"
-        if (
+        if trace_id_mismatch:
+            evidence.retrieval_workflow = CapabilityAssessment(
+                "retrieval workflow completeness",
+                CapabilityState.FAILED,
+                "MCP direct lookup and search-to-details returned different trace IDs",
+            )
+        elif (
             evidence.direct_lookup.state == CapabilityState.OBSERVED
             or evidence.attribute_search.state == CapabilityState.OBSERVED
         ):
@@ -643,6 +668,9 @@ def try_mcp_direct_lookup(
             CapabilityState.FAILED,
             "tool returned no structured trace object",
         )
+        evidence.errors.append(
+            "mcp_normalization: direct trace lookup returned no structured trace object"
+        )
         return None
 
     evidence.direct_lookup = CapabilityAssessment(
@@ -716,12 +744,19 @@ def try_mcp_attribute_search(
             CapabilityState.FAILED,
             "search succeeded, but details response returned no structured trace object",
         )
+        evidence.errors.append(
+            "mcp_normalization: search-to-details response returned no structured trace object"
+        )
         return None
     if not trace_contains_run_id(trace, config.agent_run_id):
+        evidence.failed_stage = "mcp_attribute_search"
         evidence.attribute_search = CapabilityAssessment(
             "attribute-based trace search",
             CapabilityState.FAILED,
             "search-to-details trace did not contain requested agent.run_id in available attributes",
+        )
+        evidence.errors.append(
+            "mcp_attribute_search: search-to-details trace did not contain requested agent.run_id"
         )
         return None
 
@@ -760,20 +795,27 @@ def observe_mcp_stability(
                 CapabilityState.FAILED,
                 "repeated tool call returned no structured trace",
             )
+            evidence.errors.append(
+                "mcp_stability_check: repeated tool call returned no structured trace"
+            )
             return
         if structural_signature(first_trace) == structural_signature(repeat_trace):
-            evidence.response_stability = CapabilityAssessment(
-                "response stability",
-                CapabilityState.OBSERVED,
-                f"{tool_name} returned stable structural fields across two equivalent calls",
-            )
+            if evidence.response_stability.state != CapabilityState.FAILED:
+                evidence.response_stability = CapabilityAssessment(
+                    "response stability",
+                    CapabilityState.OBSERVED,
+                    f"{tool_name} returned stable structural fields across two equivalent calls",
+                )
+                evidence.failed_stage = None
             evidence.observations["stable_repeated_workflow"] = tool_name
-            evidence.failed_stage = None
         else:
             evidence.response_stability = CapabilityAssessment(
                 "response stability",
                 CapabilityState.FAILED,
                 "repeated tool call changed normalized structural fields",
+            )
+            evidence.errors.append(
+                "mcp_stability_check: repeated tool call changed normalized structural fields"
             )
             evidence.failed_stage = "mcp_stability_check"
     except Exception as exc:
@@ -782,7 +824,7 @@ def observe_mcp_stability(
             CapabilityState.FAILED,
             f"{exc.__class__.__name__}: {exc}",
         )
-        evidence.errors.append(f"mcp_response_stability: {exc.__class__.__name__}: {exc}")
+        evidence.errors.append(f"mcp_stability_check: {exc.__class__.__name__}: {exc}")
         evidence.failed_stage = "mcp_stability_check"
 
 
@@ -876,7 +918,16 @@ def args_for_trace_search(tool: dict[str, Any], run_id: str) -> dict[str, Any]:
     args: dict[str, Any] = {}
 
     search_keys = ("filter", "filter_expression", "filterExpression", "query", "q")
-    for key in search_keys:
+    required_search_keys = [key for key in required if key in search_keys]
+    if len(required_search_keys) > 1:
+        raise MCPToolUnavailable(
+            "trace search schema has multiple required filter/query fields that "
+            "Gate 2 cannot map unambiguously: "
+            + ", ".join(required_search_keys)
+        )
+
+    ordered_search_keys = tuple(required_search_keys) if required_search_keys else search_keys
+    for key in ordered_search_keys:
         if key in properties:
             args[key] = expression
             break
@@ -889,13 +940,7 @@ def args_for_trace_search(tool: dict[str, Any], run_id: str) -> dict[str, Any]:
         raise MCPToolUnavailable(
             "trace search schema did not expose a supported filter/query parameter."
         )
-    unsupported_required = [
-        name
-        for name in required
-        if name not in args
-        and name not in search_keys
-        and name not in {"limit", "pageSize"}
-    ]
+    unsupported_required = [name for name in required if name not in args]
     if unsupported_required:
         raise MCPToolUnavailable(
             "trace search schema has required fields that Gate 2 cannot map safely: "

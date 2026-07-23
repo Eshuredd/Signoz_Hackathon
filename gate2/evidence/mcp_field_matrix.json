@@ -1,19 +1,19 @@
 {
-  "sanitized": true,
-  "captured_at": "2026-07-22T17:46:02+05:30",
-  "source": "SigNoz MCP",
-  "runtime_state": "MCP health succeeded, initialize failed with authentication error",
+  "captured_at": "2026-07-23T14:22:29+05:30",
   "fields": {
-    "trace_id": "not runtime-observed",
-    "span_id": "not runtime-observed",
-    "parent_span_id": "not runtime-observed",
-    "span_name": "not runtime-observed",
-    "start_time": "not runtime-observed",
-    "end_time": "not runtime-observed",
-    "duration": "not runtime-observed",
-    "status": "not runtime-observed",
-    "complete attributes": "not runtime-observed",
-    "resource attributes": "not runtime-observed"
+    "complete attributes": "unavailable",
+    "duration": "unavailable",
+    "end_time": "unavailable",
+    "parent_span_id": "unavailable",
+    "resource attributes": "unavailable",
+    "span_id": "unavailable",
+    "span_name": "unavailable",
+    "start_time": "unavailable",
+    "status": "unavailable",
+    "trace_id": "unavailable"
   },
-  "reason": "No MCP tool response was available because mcp_initialize returned HTTP 401 without SIGNOZ_API_KEY."
+  "reason": "No MCP tool response was available because mcp_initialize returned HTTP 401 without SIGNOZ_API_KEY.",
+  "runtime_state": "MCP /livez succeeded; initialize failed with authentication error",
+  "sanitized": true,
+  "source": "SigNoz MCP"
 }

@@ -1,22 +1,29 @@
 {
-  "sanitized": true,
-  "captured_at": "2026-07-22T17:46:02+05:30",
-  "source": "SigNoz Trace API",
-  "health": "ok",
-  "version": "v0.133.0",
-  "authentication_required": "observed",
-  "direct_lookup": {
-    "status": "not attempted",
-    "reason": "SIGNOZ_API_KEY was unset"
-  },
   "agent_run_id_search": {
-    "status": "not attempted",
-    "reason": "SIGNOZ_API_KEY was unset"
+    "reason": "SIGNOZ_API_KEY was unset in the repository-root .env, so authenticated Trace API retrieval could not run.",
+    "status": "unavailable"
+  },
+  "authentication_required": "observed",
+  "authentication_result": "SIGNOZ_API_KEY <unset>; no secret value printed",
+  "captured_at": "2026-07-23T14:22:29+05:30",
+  "direct_lookup": {
+    "reason": "SIGNOZ_API_KEY was unset in the repository-root .env, so authenticated Trace API retrieval could not run.",
+    "status": "unavailable"
+  },
+  "expected_custom_attributes": [
+    "agent.run_id",
+    "traceguard.run_id",
+    "traceguard.project",
+    "traceguard.gate"
+  ],
+  "health": "ok",
+  "live_ids_available": {
+    "agent_run_id": "855414bd-3493-4e71-bada-a4bf4b872b26",
+    "trace_id": "c5b74d8d9f7dd08f9ee32af3bf2aa8e6"
   },
   "retrieval_workflow_completeness": "not observed",
-  "live_ids_available": {
-    "trace_id": "92fd5c1f5beb68bce5cfcb39b6c4670d",
-    "agent_run_id": "aa129fc0-0501-4f14-8df6-833caa5239e7"
-  },
-  "smallest_next_action": "Export SIGNOZ_API_KEY and rerun the Trace API probe."
+  "sanitized": true,
+  "smallest_next_action": "Set SIGNOZ_API_KEY in the ignored repository-root .env and rerun python3 gate2/signoz_api_client.py.",
+  "source": "SigNoz Trace API",
+  "version": "v0.133.0"
 }
