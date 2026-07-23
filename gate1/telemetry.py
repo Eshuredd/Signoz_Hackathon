@@ -4,7 +4,13 @@ import os
 import sys
 import time
 import uuid
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
+
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -21,9 +27,12 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 from opentelemetry.trace import Status, StatusCode
 
+from traceguard_runtime import Gate1RuntimeManifest, write_gate1_manifest
+
 
 SERVICE_NAME = "traceguard-gate1"
 SERVICE_VERSION = "0.1.0"
+SPAN_NAME = "traceguard.gate1.connectivity"
 DEFAULT_OTLP_HTTP_BASE = "http://localhost:4318"
 
 SIGNAL_PATHS = {
@@ -108,7 +117,7 @@ def create_one_span(otel_resource: Resource, run_id: str) -> tuple[Any, str]:
     tracer_provider.add_span_processor(SimpleSpanProcessor(span_memory_exporter))
 
     tracer = tracer_provider.get_tracer("traceguard.gate1")
-    with tracer.start_as_current_span("traceguard.gate1.connectivity") as span:
+    with tracer.start_as_current_span(SPAN_NAME) as span:
         span.set_attributes(
             {
                 "traceguard.project": "TraceGuard",
@@ -212,7 +221,7 @@ def emit_optional_structured_log(
     endpoint: str,
     timeout_ms: int,
     run_id: str,
-) -> None:
+) -> bool:
     try:
         from opentelemetry._logs import LogRecord, SeverityNumber
         from opentelemetry.exporter.otlp.proto.http._log_exporter import (
@@ -251,6 +260,7 @@ def emit_optional_structured_log(
         exporter.force_flush(timeout_millis=timeout_ms)
         logger_provider.shutdown()
         say("SUCCESS: emitted one optional structured log through OTLP.")
+        return True
     except Exception as exc:
         print(
             "WARNING: Optional structured log export failed, but trace and metric "
@@ -258,6 +268,32 @@ def emit_optional_structured_log(
             file=sys.stderr,
             flush=True,
         )
+        return False
+
+
+def write_runtime_manifest(
+    *,
+    trace_id: str,
+    run_id: str,
+    trace_export_succeeded: bool,
+    metric_export_succeeded: bool,
+    log_export_succeeded: bool,
+) -> Path:
+    manifest = Gate1RuntimeManifest(
+        schema_version=1,
+        generated_at=datetime.now(UTC),
+        gate="1A",
+        service_name=SERVICE_NAME,
+        service_version=SERVICE_VERSION,
+        span_name=SPAN_NAME,
+        trace_id=trace_id,
+        agent_run_id=run_id,
+        traceguard_run_id=run_id,
+        trace_export_succeeded=trace_export_succeeded,
+        metric_export_succeeded=metric_export_succeeded,
+        log_export_succeeded=log_export_succeeded,
+    )
+    return write_gate1_manifest(manifest)
 
 
 def main() -> int:
@@ -279,25 +315,36 @@ def main() -> int:
 
     try:
         trace_id = export_trace(otel_resource, endpoints["traces"], timeout_ms, run_id)
+        trace_export_succeeded = True
         say(
             "SUCCESS: exported one custom trace "
-            f"(span=traceguard.gate1.connectivity, trace_id={trace_id})."
+            f"(span={SPAN_NAME}, trace_id={trace_id})."
         )
 
         export_metric(otel_resource, endpoints["metrics"], timeout_ms, run_id)
+        metric_export_succeeded = True
         say(
             "SUCCESS: exported one custom metric increment "
             "(counter=traceguard.gate1.connectivity_runs, value=1)."
         )
 
-        emit_optional_structured_log(
+        log_export_succeeded = emit_optional_structured_log(
             otel_resource,
             endpoints["logs"],
             timeout_ms,
             run_id,
         )
+        manifest_path = write_runtime_manifest(
+            trace_id=trace_id,
+            run_id=run_id,
+            trace_export_succeeded=trace_export_succeeded,
+            metric_export_succeeded=metric_export_succeeded,
+            log_export_succeeded=log_export_succeeded,
+        )
+        say("SUCCESS: wrote latest Gate 1 runtime manifest to:")
+        say(str(manifest_path))
         return 0
-    except TelemetryExportError as exc:
+    except (OSError, RuntimeError, TelemetryExportError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr, flush=True)
         return 1
 

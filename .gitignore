@@ -15,6 +15,7 @@ env/
 
 # Generated Gate outputs
 gate2/artifacts/
+.traceguard/runtime/
 
 # macOS/editor noise
 .DS_Store

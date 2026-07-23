@@ -57,25 +57,49 @@ Observed live state:
 - MCP `/livez`: `ok`
 - Docker health for `signoz-mcp`: `unhealthy` because the generated healthcheck invokes `wget`, which is absent in the MCP image; external `/livez` succeeded.
 
-## Service Account
+## Service Account And Runtime IDs
 
-Gate 2 loads local configuration from the repository-root `.env` file. Copy the committed placeholder template and edit the local file:
+Gate 2 loads stable local configuration from the repository-root `.env` file. Copy the committed placeholder template and edit the local file once:
 
 ```bash
 cp .env.example .env
 ```
 
-Set the local values in `.env`:
+Set stable local values in `.env`:
 
 ```bash
 SIGNOZ_API_KEY=<your-service-account-key>
-SIGNOZ_TRACE_ID=<trace-id>
-TRACEGUARD_AGENT_RUN_ID=<run-id>
 ```
 
-`SIGNOZ_API_KEY` is a SigNoz service-account key with trace read permission. `SIGNOZ_TRACE_ID` must be a 32-character hexadecimal trace ID, and `TRACEGUARD_AGENT_RUN_ID` should correspond to the telemetry being tested.
+`SIGNOZ_API_KEY` is a SigNoz service-account key with trace read permission.
+
+Gate 1 writes fresh dynamic IDs to:
+
+```text
+.traceguard/runtime/latest_gate1.json
+```
+
+Gate 2 automatically reads that latest successful Gate 1 runtime manifest when `SIGNOZ_TRACE_ID` and `TRACEGUARD_AGENT_RUN_ID` are blank or absent. You should not edit `.env` after every Gate 1 run.
+
+If your local `.env` already contains older `SIGNOZ_TRACE_ID` and `TRACEGUARD_AGENT_RUN_ID` values, blank or remove those two lines once to enable the no-argument manifest workflow. Keep `SIGNOZ_API_KEY` and the stable SigNoz URLs in `.env`.
 
 The repository-root `.env` is ignored by Git. `.env.example` is safe to commit because it contains placeholders only. Shell-exported values override `.env`, so deployed environments should inject secrets through their own secret-management system. Gate 2 intentionally records only whether the API key is `<set>` or `<unset>` and never prints the key.
+
+Trace-context precedence is:
+
+1. Explicit process environment variables or values loaded from `.env`
+2. Latest successful Gate 1 runtime manifest
+3. Not configured
+
+If overriding dynamic IDs explicitly, provide both values from the same Gate 1 execution:
+
+```bash
+SIGNOZ_TRACE_ID=<trace-id> \
+TRACEGUARD_AGENT_RUN_ID=<run-id> \
+python3 gate2/main.py
+```
+
+Providing only one explicit ID raises a configuration error rather than mixing it with an unrelated manifest value.
 
 ## Fresh Live Telemetry
 
@@ -144,6 +168,13 @@ Install dependencies:
 
 ```bash
 python3 -m pip install -r gate2/requirements.txt
+```
+
+Normal local workflow:
+
+```bash
+python3 gate1/telemetry.py
+python3 gate2/main.py
 ```
 
 Trace API probe:

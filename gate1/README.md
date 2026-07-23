@@ -28,6 +28,14 @@ With SigNoz already running locally:
 python telemetry.py
 ```
 
+On every successful run, Gate 1 writes the latest non-secret runtime identifiers to:
+
+```text
+<repository-root>/.traceguard/runtime/latest_gate1.json
+```
+
+The manifest contains the generated trace ID, run ID, service metadata, and export success booleans. It never contains `SIGNOZ_API_KEY`, authorization headers, MCP session IDs, cookies, passwords, or environment snapshots. Each successful run atomically replaces the previous `latest_gate1.json`.
+
 By default, the script exports over OTLP/HTTP to:
 
 - traces: `http://localhost:4318/v1/traces`
@@ -56,6 +64,27 @@ The standard OpenTelemetry variables also work:
 - `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`
 - `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT`
 - `OTEL_EXPORTER_OTLP_TIMEOUT`
+
+## Gate 2 Handoff
+
+The normal local workflow is:
+
+```bash
+python3 gate1/telemetry.py
+python3 gate2/main.py
+```
+
+Gate 2 automatically reads `.traceguard/runtime/latest_gate1.json` when `SIGNOZ_TRACE_ID` and `TRACEGUARD_AGENT_RUN_ID` are not explicitly set. You should not edit `.env` after every Gate 1 run. Stable SigNoz settings and the local service-account key stay in the repository-root `.env`.
+
+Older Gate 1 executions can still be tested with explicit paired overrides:
+
+```bash
+SIGNOZ_TRACE_ID=<trace-id> \
+TRACEGUARD_AGENT_RUN_ID=<run-id> \
+python3 gate2/main.py
+```
+
+Provide both override values from the same Gate 1 execution, or provide neither and let Gate 2 use the latest manifest.
 
 ## Verify In SigNoz
 

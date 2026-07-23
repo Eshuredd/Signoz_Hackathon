@@ -1,13 +1,23 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
 from exceptions import ConfigurationError
+from traceguard_runtime import (
+    RuntimeManifestError,
+    default_gate1_manifest_path,
+    try_read_gate1_manifest,
+)
 
 
 DEFAULT_SIGNOZ_BASE_URL = "http://localhost:8080"
@@ -16,7 +26,7 @@ DEFAULT_MCP_HEALTH_URL = "http://localhost:8000/livez"
 
 
 def repository_root() -> Path:
-    return Path(__file__).resolve().parent.parent
+    return REPOSITORY_ROOT
 
 
 def load_repository_env(dotenv_path: Path | None = None) -> Path:
@@ -86,17 +96,26 @@ class Gate2Config:
     debug: bool
     mcp_url: str
     mcp_health_url: str
+    trace_context_source: str = "not_configured"
+    gate1_manifest_path: str | None = None
 
     @classmethod
-    def from_env(cls, dotenv_path: Path | None = None) -> "Gate2Config":
+    def from_env(
+        cls,
+        dotenv_path: Path | None = None,
+        gate1_manifest_path: Path | None = None,
+    ) -> "Gate2Config":
         load_repository_env(dotenv_path)
+        signoz_trace_id, agent_run_id, trace_context_source, selected_manifest_path = (
+            resolve_trace_context(gate1_manifest_path)
+        )
         return cls(
             signoz_base_url=_validate_http_url(
                 "SIGNOZ_BASE_URL",
                 _optional_env("SIGNOZ_BASE_URL") or DEFAULT_SIGNOZ_BASE_URL,
             ),
-            signoz_trace_id=_validate_trace_id(_optional_env("SIGNOZ_TRACE_ID")),
-            agent_run_id=_optional_env("TRACEGUARD_AGENT_RUN_ID"),
+            signoz_trace_id=signoz_trace_id,
+            agent_run_id=agent_run_id,
             signoz_api_key=_optional_env("SIGNOZ_API_KEY"),
             request_timeout_seconds=_positive_float_env(
                 "SIGNOZ_REQUEST_TIMEOUT_SECONDS",
@@ -111,6 +130,8 @@ class Gate2Config:
                 "SIGNOZ_MCP_HEALTH_URL",
                 _optional_env("SIGNOZ_MCP_HEALTH_URL") or DEFAULT_MCP_HEALTH_URL,
             ),
+            trace_context_source=trace_context_source,
+            gate1_manifest_path=str(selected_manifest_path) if selected_manifest_path else None,
         )
 
     def non_secret_snapshot(self) -> dict[str, object]:
@@ -123,4 +144,35 @@ class Gate2Config:
             "SIGNOZ_DEBUG": self.debug,
             "SIGNOZ_MCP_URL": self.mcp_url,
             "SIGNOZ_MCP_HEALTH_URL": self.mcp_health_url,
+            "trace_context_source": self.trace_context_source,
+            "gate1_manifest_path": self.gate1_manifest_path,
         }
+
+
+def resolve_trace_context(
+    gate1_manifest_path: Path | None = None,
+) -> tuple[str | None, str | None, str, Path | None]:
+    trace_id = _optional_env("SIGNOZ_TRACE_ID")
+    run_id = _optional_env("TRACEGUARD_AGENT_RUN_ID")
+    if trace_id and run_id:
+        return _validate_trace_id(trace_id), run_id, "environment", None
+    if trace_id or run_id:
+        raise ConfigurationError(
+            "SIGNOZ_TRACE_ID and TRACEGUARD_AGENT_RUN_ID must be supplied together "
+            "from the same Gate 1 execution, or both left blank to use the latest "
+            "Gate 1 runtime manifest."
+        )
+
+    selected_manifest_path = gate1_manifest_path or default_gate1_manifest_path()
+    try:
+        manifest = try_read_gate1_manifest(selected_manifest_path)
+    except RuntimeManifestError as exc:
+        raise ConfigurationError(f"Invalid Gate 1 runtime manifest: {exc}") from exc
+    if manifest is None:
+        return None, None, "not_configured", selected_manifest_path
+    return (
+        _validate_trace_id(manifest.trace_id),
+        manifest.agent_run_id,
+        "manifest",
+        selected_manifest_path,
+    )
