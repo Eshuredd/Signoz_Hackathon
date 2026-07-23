@@ -59,13 +59,23 @@ Observed live state:
 
 ## Service Account
 
-Create a SigNoz service-account key in the UI and export it only in your shell:
+Gate 2 loads local configuration from the repository-root `.env` file. Copy the committed placeholder template and edit the local file:
 
 ```bash
-export SIGNOZ_API_KEY="<service-account-key>"
+cp .env.example .env
 ```
 
-Do not commit the key. Evidence and runtime output redact it as `<set>` or `<unset>`.
+Set the local values in `.env`:
+
+```bash
+SIGNOZ_API_KEY=<your-service-account-key>
+SIGNOZ_TRACE_ID=<trace-id>
+TRACEGUARD_AGENT_RUN_ID=<run-id>
+```
+
+`SIGNOZ_API_KEY` is a SigNoz service-account key with trace read permission. `SIGNOZ_TRACE_ID` must be a 32-character hexadecimal trace ID, and `TRACEGUARD_AGENT_RUN_ID` should correspond to the telemetry being tested.
+
+The repository-root `.env` is ignored by Git. `.env.example` is safe to commit because it contains placeholders only. Shell-exported values override `.env`, so deployed environments should inject secrets through their own secret-management system. Gate 2 intentionally records only whether the API key is `<set>` or `<unset>` and never prints the key.
 
 ## Fresh Live Telemetry
 

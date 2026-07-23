@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import urlparse
+
+from dotenv import load_dotenv
 
 from exceptions import ConfigurationError
 
@@ -10,6 +13,16 @@ from exceptions import ConfigurationError
 DEFAULT_SIGNOZ_BASE_URL = "http://localhost:8080"
 DEFAULT_MCP_URL = "http://localhost:8000/mcp"
 DEFAULT_MCP_HEALTH_URL = "http://localhost:8000/livez"
+
+
+def repository_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def load_repository_env(dotenv_path: Path | None = None) -> Path:
+    selected_path = dotenv_path or repository_root() / ".env"
+    load_dotenv(dotenv_path=selected_path, override=False)
+    return selected_path
 
 
 def _optional_env(name: str) -> str | None:
@@ -75,7 +88,8 @@ class Gate2Config:
     mcp_health_url: str
 
     @classmethod
-    def from_env(cls) -> "Gate2Config":
+    def from_env(cls, dotenv_path: Path | None = None) -> "Gate2Config":
+        load_repository_env(dotenv_path)
         return cls(
             signoz_base_url=_validate_http_url(
                 "SIGNOZ_BASE_URL",
