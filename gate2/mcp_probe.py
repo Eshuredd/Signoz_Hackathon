@@ -45,11 +45,9 @@ SESSION_HEADER = "Mcp-Session-Id"
 TRACE_ID_RE = re.compile(r"^[0-9a-fA-F]{32}$")
 DETAILS_TOOL_NAMES = (
     "signoz_get_trace_details",
-    "get_trace_details",
 )
 SEARCH_TOOL_NAMES = (
     "signoz_search_traces",
-    "search_traces",
 )
 TRACE_ID_KEYS = ("trace_id", "traceId", "traceID")
 RUN_ID_KEYS = ("agent.run_id", "agentRunId", "agent_run_id")
@@ -377,7 +375,6 @@ def run_mcp_probe(
         search_trace: Trace | None = None
         failed_workflow_stages: list[str] = []
         try:
-            evidence.failed_stage = "mcp_direct_lookup"
             details_trace = try_mcp_direct_lookup(
                 client,
                 config,
@@ -387,17 +384,22 @@ def run_mcp_probe(
             )
             if details_trace is not None:
                 evidence.observations["mcp_direct_lookup"] = "succeeded"
+                if (
+                    not failed_workflow_stages
+                    and evidence.response_stability.state != CapabilityState.FAILED
+                ):
+                    evidence.failed_stage = None
         except Exception as exc:
-            failed_workflow_stages.append("mcp_direct_lookup")
+            stage = evidence.failed_stage or "mcp_direct_lookup"
+            failed_workflow_stages.append(stage)
             evidence.direct_lookup = CapabilityAssessment(
                 "direct trace lookup",
                 CapabilityState.FAILED,
                 f"{exc.__class__.__name__}: {exc}",
             )
-            evidence.errors.append(f"mcp_direct_trace_lookup: {exc.__class__.__name__}: {exc}")
+            evidence.errors.append(f"{stage}: {exc.__class__.__name__}: {exc}")
 
         try:
-            evidence.failed_stage = "mcp_attribute_search"
             search_trace = try_mcp_attribute_search(
                 client,
                 config,
@@ -407,14 +409,20 @@ def run_mcp_probe(
             )
             if search_trace is not None:
                 evidence.observations["mcp_attribute_search_to_details"] = "succeeded"
+                if (
+                    not failed_workflow_stages
+                    and evidence.response_stability.state != CapabilityState.FAILED
+                ):
+                    evidence.failed_stage = None
         except Exception as exc:
-            failed_workflow_stages.append("mcp_attribute_search")
+            stage = evidence.failed_stage or "mcp_attribute_search"
+            failed_workflow_stages.append(stage)
             evidence.attribute_search = CapabilityAssessment(
                 "attribute-based trace search",
                 CapabilityState.FAILED,
                 f"{exc.__class__.__name__}: {exc}",
             )
-            evidence.errors.append(f"mcp_attribute_search: {exc.__class__.__name__}: {exc}")
+            evidence.errors.append(f"{stage}: {exc.__class__.__name__}: {exc}")
 
         trace = details_trace or search_trace
 
@@ -434,7 +442,8 @@ def run_mcp_probe(
             return evidence
 
         evidence.trace = trace
-        evidence.failed_stage = "mcp_normalization"
+        if evidence.response_stability.state != CapabilityState.FAILED:
+            evidence.failed_stage = "mcp_normalization"
         evidence.field_assessments = trace.field_assessments()
         evidence.response_classification = classify_trace_structure(trace)
         evidence.deterministic_evaluation = deterministic_assessment(trace)
@@ -446,7 +455,12 @@ def run_mcp_probe(
         evidence.preserves_multiple_spans, evidence.preserves_parent_child = (
             relationship_capabilities(trace)
         )
-        evidence.failed_stage = "mcp_relationship_validation"
+        if (
+            trace.has_multiple_spans()
+            and not trace.has_valid_parent_child_relationship()
+            and evidence.response_stability.state != CapabilityState.FAILED
+        ):
+            evidence.failed_stage = "mcp_relationship_validation"
         if (
             evidence.direct_lookup.state == CapabilityState.OBSERVED
             or evidence.attribute_search.state == CapabilityState.OBSERVED
@@ -461,8 +475,15 @@ def run_mcp_probe(
             CapabilityState.OBSERVED,
             "MCP availability, tool, and schema failures map to custom exceptions",
         )
-        if evidence.response_stability.state != CapabilityState.FAILED:
+        if (
+            not evidence.errors
+            and
+            evidence.response_stability.state != CapabilityState.FAILED
+            and evidence.failed_stage != "mcp_relationship_validation"
+        ):
             evidence.failed_stage = None
+        elif evidence.errors and failed_workflow_stages:
+            evidence.failed_stage = failed_workflow_stages[-1]
         normalized_path = write_json_artifact(
             artifacts_dir / "mcp_normalized.json",
             trace.to_dict(),
@@ -747,12 +768,14 @@ def observe_mcp_stability(
                 f"{tool_name} returned stable structural fields across two equivalent calls",
             )
             evidence.observations["stable_repeated_workflow"] = tool_name
+            evidence.failed_stage = None
         else:
             evidence.response_stability = CapabilityAssessment(
                 "response stability",
                 CapabilityState.FAILED,
                 "repeated tool call changed normalized structural fields",
             )
+            evidence.failed_stage = "mcp_stability_check"
     except Exception as exc:
         evidence.response_stability = CapabilityAssessment(
             "response stability",
@@ -760,6 +783,7 @@ def observe_mcp_stability(
             f"{exc.__class__.__name__}: {exc}",
         )
         evidence.errors.append(f"mcp_response_stability: {exc.__class__.__name__}: {exc}")
+        evidence.failed_stage = "mcp_stability_check"
 
 
 def structural_signature(trace: Trace) -> dict[str, Any]:
@@ -897,41 +921,66 @@ def input_schema_required(tool: dict[str, Any]) -> list[str]:
 
 
 def extract_trace_search_hits(raw_response: dict[str, Any]) -> list[MCPTraceSearchHit]:
-    payload = extract_structured_payload(raw_response)
-    if payload is None:
-        raise IncompleteMCPTelemetry("MCP search response contained no structured payload.")
-    hits: list[MCPTraceSearchHit] = []
-    for obj in iter_structured_objects(payload):
-        trace_id = first_string_value(obj, TRACE_ID_KEYS)
-        if trace_id is None:
-            continue
-        if not TRACE_ID_RE.fullmatch(trace_id):
-            continue
-        attrs = ensure_dict(
-            obj.get("attributes")
-            or obj.get("span_attributes")
-            or obj.get("spanAttributes")
-        )
-        hits.append(MCPTraceSearchHit(trace_id=trace_id.lower(), attributes=attrs, raw=obj))
+    hits = [
+        hit
+        for item in extract_search_result_items(raw_response)
+        if (hit := parse_trace_search_hit(item)) is not None
+    ]
     if not hits:
         raise IncompleteMCPTelemetry(
-            "MCP search response did not contain structured trace_id fields."
+            "MCP search response did not contain supported structured trace-hit objects."
         )
     return hits
 
 
-def iter_structured_objects(payload: Any) -> list[dict[str, Any]]:
-    objects: list[dict[str, Any]] = []
-    if isinstance(payload, dict):
-        objects.append(payload)
-        for value in payload.values():
-            if isinstance(value, (dict, list)):
-                objects.extend(iter_structured_objects(value))
-    elif isinstance(payload, list):
-        for item in payload:
-            if isinstance(item, (dict, list)):
-                objects.extend(iter_structured_objects(item))
-    return objects
+def extract_search_result_items(raw_response: dict[str, Any]) -> list[dict[str, Any]]:
+    payload = extract_structured_payload(raw_response)
+    if payload is None:
+        raise IncompleteMCPTelemetry("MCP search response contained no structured payload.")
+    items: list[dict[str, Any]] = []
+    for container in search_result_containers(payload):
+        if isinstance(container, list):
+            items.extend(item for item in container if isinstance(item, dict))
+        elif isinstance(container, dict):
+            items.append(container)
+    if not items:
+        raise IncompleteMCPTelemetry(
+            "MCP search response did not contain a supported results, rows, or data container."
+        )
+    return items
+
+
+def search_result_containers(payload: Any) -> list[Any]:
+    if isinstance(payload, list):
+        return [payload]
+    if not isinstance(payload, dict):
+        return []
+    containers: list[Any] = []
+    for key in ("results", "rows", "data"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            containers.append(value)
+        elif key == "data" and isinstance(value, dict):
+            for nested_key in ("results", "rows"):
+                nested = value.get(nested_key)
+                if isinstance(nested, list):
+                    containers.append(nested)
+    return containers
+
+
+def parse_trace_search_hit(item: dict[str, Any]) -> MCPTraceSearchHit | None:
+    candidate = ensure_dict(item.get("data")) or item
+    trace_id = first_string_value(candidate, TRACE_ID_KEYS)
+    if trace_id is None:
+        return None
+    if not TRACE_ID_RE.fullmatch(trace_id):
+        return None
+    attrs = ensure_dict(
+        candidate.get("attributes")
+        or candidate.get("span_attributes")
+        or candidate.get("spanAttributes")
+    )
+    return MCPTraceSearchHit(trace_id=trace_id.lower(), attributes=attrs, raw=item)
 
 
 def first_string_value(obj: dict[str, Any], keys: tuple[str, ...]) -> str | None:
@@ -968,7 +1017,7 @@ def attributes_contain_run_id(attributes: dict[str, Any], run_id: str) -> bool:
 def trace_contains_run_id(trace: Trace, run_id: str) -> bool:
     attribute_maps = [span.attributes for span in trace.spans if span.attributes]
     if not attribute_maps:
-        return True
+        return False
     return any(attributes_contain_run_id(attrs, run_id) for attrs in attribute_maps)
 
 
