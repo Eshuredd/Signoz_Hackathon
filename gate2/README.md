@@ -9,19 +9,19 @@ This gate only evaluates retrieval evidence. It does not implement Gate 3, malfo
 
 ## Current Status
 
-Gate 2A is implemented and now loads the latest Gate 1 trace context from `.traceguard/runtime/latest_gate1.json` when the dynamic ID overrides are blank. In the latest live run on 2026-07-25, Gate 2 loaded the manifest source correctly and `SIGNOZ_API_KEY` was `<set>`. The service-account self-check succeeded, but localhost SigNoz rejected direct lookup and `agent.run_id` search as `AuthorizationFailure: authz_forbidden` because the service account lacks trace read access.
+Gate 2A is implemented and now loads the latest Gate 1 trace context from `.traceguard/runtime/latest_gate1.json` when the dynamic ID overrides are blank. In the latest live run on 2026-07-25, Gate 2 loaded the manifest source correctly, `SIGNOZ_API_KEY` was `<set>`, the service-account self-check succeeded, direct trace lookup succeeded, and `agent.run_id` search resolved the same trace.
 
-Gate 2B is implemented with Streamable HTTP request/notification separation, MCP session ID reuse, SSE event parsing, exact MCP failure-stage preservation, conservative structured search-result parsing, tool discovery from `tools/list`, schema-derived arguments, direct/search workflow independence, and search-to-details retrieval. In the latest live run, MCP health, initialize, initialized notification, and `tools/list` succeeded. The server exposed `signoz_get_trace_details` and `signoz_search_traces`, but trace tool calls returned upstream 403 authorization failures from SigNoz.
+Gate 2B is implemented with Streamable HTTP request/notification separation, MCP session ID reuse, SSE event parsing, exact MCP failure-stage preservation, conservative structured search-result parsing, tool discovery from `tools/list`, schema-derived arguments, direct/search workflow independence, search-to-details retrieval, and SigNoz query-row normalization. In the latest live run, MCP health, initialize, initialized notification, `tools/list`, direct lookup, repeated direct lookup, and relationship direct lookup succeeded. MCP remained non-authoritative because the normalized payload did not expose complete custom span attributes such as `agent.run_id`, so search-to-details run ID validation failed.
 
 Current decision for this live run:
 
 ```text
-HYBRID_REQUIRES_MORE_EVIDENCE
+TRACE_API_AUTHORITATIVE
 ```
 
-Provisional evaluator source for this run: `none`. When a valid local service-account key allows Trace API direct lookup with complete fields, the Trace API remains the provisional evaluator source unless MCP is fully demonstrated.
+Provisional evaluator source for this run: `SigNoz Trace API`.
 
-Gate 2 is not fully complete yet because authenticated Trace API telemetry retrieval is still denied by local SigNoz authorization.
+Gate 2 is complete for this phase: Trace API is the authoritative retrieval source, while MCP is meaningfully tested but incomplete for evaluator-grade telemetry.
 
 ## Live Commands
 
@@ -108,8 +108,8 @@ Gate 1A generated:
 ```text
 first successful run_id=8848eb4c-c23a-44fd-ab7e-f23958c4bd77
 first successful trace_id=2fed5f0ffbd62b3be751af910e89c5e0
-latest run_id=c56034ff-0f1c-4d1f-8992-83bd1df57264
-latest trace_id=a89c2a1295cf27fc6e661ff3506cd4e7
+latest run_id=2f93baa3-b17f-4fe0-97be-80fb646f3110
+latest trace_id=c625f09f0672d266d7a28ba4da41db1f
 ```
 
 The latest successful Gate 1 run replaced `.traceguard/runtime/latest_gate1.json`, and Gate 2 loaded that run with `trace_context_source=manifest`.
@@ -117,11 +117,11 @@ The latest successful Gate 1 run replaced `.traceguard/runtime/latest_gate1.json
 Relationship fixture generated:
 
 ```text
-TRACEGUARD_GATE2_FIXTURE_RUN_ID=gate2-ca0b28e0-0ee6-436d-9793-eb0b09d7c6a8
-relationship trace_id=eedd684c8470dce7ddeefcf35bf34b79
-root_span_id=08611f1108bc6662
-child_span_id=011fa70c54c58820
-child_parent_span_id=08611f1108bc6662
+TRACEGUARD_GATE2_FIXTURE_RUN_ID=gate2-621e7840-891d-4c02-92fd-910997ae6721
+relationship trace_id=d9fb43d0f9b5dcadef12edae0b40e543
+root_span_id=1bf72c5ea6f3833a
+child_span_id=b51c032a9593f0b0
+child_parent_span_id=1bf72c5ea6f3833a
 ```
 
 The relationship fixture is valid two-span telemetry:
@@ -171,12 +171,12 @@ Observed input schema summary:
 
 Latest MCP results:
 
-- Direct lookup: failed; trace-details tool returned no structured trace object because upstream SigNoz returned 403 authz_forbidden.
-- Search-to-details: failed; search response did not contain a supported structured result container because upstream SigNoz returned 403 authz_forbidden.
-- Relationship retrieval: not observed; trace tool calls did not return structured telemetry.
-- Stability check: unavailable; no repeated details retrieval was possible.
-- Exact failed stage: `mcp_search_result_parsing`.
-- Blocker: MCP endpoint was reachable and tool discovery succeeded, but SigNoz rejected upstream trace retrieval as unauthorized for `traces:read`.
+- Direct lookup: observed; trace-details normalized 1 span from the latest Gate 1 manifest trace.
+- Search-to-details: failed; the normalized trace did not expose the requested `agent.run_id` in available attributes.
+- Relationship retrieval: observed through direct lookup; both fixture spans were normalized and the child `parent_span_id` was preserved.
+- Stability check: observed; repeated direct details retrieval returned stable structural fields.
+- Exact failed stage: `mcp_normalization`.
+- Blocker: none external. MCP is incomplete because custom span attributes are absent or transformed in the returned row payload.
 
 ## Run
 
@@ -221,17 +221,17 @@ python3 gate2/main.py
 echo $?
 ```
 
-Latest full comparison exit code: `1`.
+Latest full comparison exit code: `0`.
 
 Latest Trace API results:
 
 - Health: `ok`.
 - Version: `v0.134.0`.
 - Trace context source: `manifest`.
-- Direct lookup: failed with `AuthorizationFailure: authz_forbidden`.
-- `agent.run_id` discovery: failed with `AuthorizationFailure: authz_forbidden`; service account is not authorized for `traces:read` on `builder_query/*`.
-- Relationship retrieval: not observed because authenticated Trace API retrieval failed.
-- Response classification: not observed.
+- Direct lookup: observed; retrieved 1 span from the latest Gate 1 manifest trace.
+- `agent.run_id` discovery: observed; matched 1 span row for the manifest run ID.
+- Relationship retrieval: observed; retrieved 2 fixture spans and preserved the child `parent_span_id`.
+- Response classification: complete structured telemetry.
 
 Exit codes:
 
@@ -281,5 +281,5 @@ Latest results:
 - runtime: `15 passed`, `0 failed`, `0 skipped`
 - Gate 1: `7 passed`, `0 failed`, `0 skipped`
 - Gate 2 config: `26 passed`, `0 failed`, `0 skipped`
-- all Gate 2: `95 passed`, `0 failed`, `0 skipped`
-- full suite: `117 passed`, `0 failed`, `0 skipped`
+- all Gate 2: `97 passed`, `0 failed`, `0 skipped`
+- full suite: `119 passed`, `0 failed`, `0 skipped`

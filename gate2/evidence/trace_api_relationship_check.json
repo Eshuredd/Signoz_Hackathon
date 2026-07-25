@@ -1,15 +1,15 @@
 {
-  "captured_at": "2026-07-25T07:39:00Z",
+  "captured_at": "2026-07-25T08:20:00Z",
   "relationship_fixture": {
-    "child_parent_span_id": "08611f1108bc6662",
-    "child_span_id": "011fa70c54c58820",
+    "child_parent_span_id": "1bf72c5ea6f3833a",
+    "child_span_id": "b51c032a9593f0b0",
     "gate3_scope": false,
     "local_parent_link_valid": true,
-    "root_span_id": "08611f1108bc6662",
-    "run_id": "gate2-ca0b28e0-0ee6-436d-9793-eb0b09d7c6a8",
+    "root_span_id": "1bf72c5ea6f3833a",
+    "run_id": "gate2-621e7840-891d-4c02-92fd-910997ae6721",
     "sender": "gate2/relationship_fixture.py",
     "telemetry_type": "valid OpenTelemetry trace",
-    "trace_id": "eedd684c8470dce7ddeefcf35bf34b79"
+    "trace_id": "d9fb43d0f9b5dcadef12edae0b40e543"
   },
   "root_only_policy": {
     "preserves_multiple_spans": "not observed",
@@ -18,10 +18,10 @@
   },
   "sanitized": true,
   "trace_api_relationship_result": {
-    "preserves_multiple_spans": "not observed",
-    "preserves_parent_child": "not observed",
-    "reason": "Trace API requests were rejected as unauthorized for trace reads, so relationship retrieval from SigNoz was not observed.",
-    "retrieved_from_signoz": false,
-    "two_expected_spans_returned": "not observed"
+    "preserves_multiple_spans": "observed",
+    "preserves_parent_child": "observed",
+    "reason": "Trace API retrieved both relationship fixture spans from SigNoz and preserved the child parent_span_id.",
+    "retrieved_from_signoz": true,
+    "two_expected_spans_returned": "observed"
   }
 }

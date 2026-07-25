@@ -1,19 +1,19 @@
 {
-  "captured_at": "2026-07-25T07:39:00Z",
+  "captured_at": "2026-07-25T08:20:00Z",
   "fields": {
-    "complete attributes": "unavailable",
-    "duration": "unavailable",
-    "end_time": "unavailable",
-    "parent_span_id": "unavailable",
-    "resource attributes": "unavailable",
-    "span_id": "unavailable",
-    "span_name": "unavailable",
-    "start_time": "unavailable",
-    "status": "unavailable",
-    "trace_id": "unavailable"
+    "complete attributes": "partial",
+    "duration": "available",
+    "end_time": "available",
+    "parent_span_id": "available",
+    "resource attributes": "available",
+    "span_id": "available",
+    "span_name": "available",
+    "start_time": "available",
+    "status": "available",
+    "trace_id": "available"
   },
-  "reason": "MCP trace details and trace search tool calls reached the server but returned upstream 403 authorization failures, so no structured trace object was normalized.",
-  "runtime_state": "MCP /livez, initialize, initialized notification, and tools/list succeeded; trace tool calls failed.",
+  "reason": "MCP direct trace details returned structured SigNoz query rows. Required span identity, timing, status, and resource fields were present, but custom attributes such as agent.run_id were not available for the normalized trace.",
+  "runtime_state": "MCP /livez, initialize, initialized notification, tools/list, direct lookup, relationship lookup, and repeated direct lookup succeeded; search-to-details failed run ID validation.",
   "sanitized": true,
   "source": "SigNoz MCP"
 }

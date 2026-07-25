@@ -1,14 +1,14 @@
 {
   "agent_run_id_search": {
-    "reason": "Authenticated request returned AuthorizationFailure: authz_forbidden; only viewers/editors/admins can access this resource.",
-    "status": "failed"
+    "reason": "agent.run_id matched 1 span row(s).",
+    "status": "observed"
   },
   "authentication_required": "observed",
   "authentication_result": "SIGNOZ_API_KEY <set>; service-account self-check returned 200; no secret value printed",
-  "captured_at": "2026-07-25T07:39:00Z",
+  "captured_at": "2026-07-25T08:20:00Z",
   "direct_lookup": {
-    "reason": "Authenticated request returned AuthorizationFailure: authz_forbidden; service account is not authorized for traces:read on builder_query/*.",
-    "status": "failed"
+    "reason": "Retrieved 1 span from the latest Gate 1 manifest trace.",
+    "status": "observed"
   },
   "expected_custom_attributes": [
     "agent.run_id",
@@ -18,16 +18,16 @@
   ],
   "health": "ok",
   "live_ids_available": {
-    "agent_run_id": "c56034ff-0f1c-4d1f-8992-83bd1df57264",
-    "trace_id": "a89c2a1295cf27fc6e661ff3506cd4e7"
+    "agent_run_id": "2f93baa3-b17f-4fe0-97be-80fb646f3110",
+    "trace_id": "c625f09f0672d266d7a28ba4da41db1f"
   },
   "manifest_fallback": {
     "manifest_path": ".traceguard/runtime/latest_gate1.json",
     "trace_context_source": "manifest"
   },
-  "retrieval_workflow_completeness": "not observed",
+  "retrieval_workflow_completeness": "observed",
   "sanitized": true,
-  "smallest_next_action": "Assign the service account a Viewer, Editor, Admin, or equivalent role that grants traces:read on builder_query/*, then rerun python gate2/signoz_api_client.py.",
+  "smallest_next_action": "None for Trace API root workflow; relationship workflow was verified separately with explicit fixture IDs.",
   "source": "SigNoz Trace API",
   "version": "v0.134.0"
 }

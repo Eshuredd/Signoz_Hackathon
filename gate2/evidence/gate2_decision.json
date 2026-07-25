@@ -1,25 +1,25 @@
 {
-  "captured_at": "2026-07-25T07:39:00Z",
-  "decision": "HYBRID_REQUIRES_MORE_EVIDENCE",
+  "captured_at": "2026-07-25T08:20:00Z",
+  "decision": "TRACE_API_AUTHORITATIVE",
   "exit_code_policy": {
     "0": "Both interfaces were meaningfully tested and a final evidence-based source decision was produced.",
     "1": "Trace API is unusable, authentication/configuration is invalid, or no usable source exists.",
     "2": "Trace API is provisionally usable but MCP could not be meaningfully tested because of an external blocker."
   },
-  "failed_stage": "mcp_search_result_parsing",
-  "full_comparison_exit_code": 1,
-  "gate2_fully_complete": false,
-  "mcp_blocker": "MCP health, initialize, initialized notification, and tools/list succeeded, but trace tool calls returned upstream 403 authorization failures from SigNoz.",
-  "provisional_evaluator_source": "none",
-  "reason": "Gate 2 loaded the latest Gate 1 manifest and attempted live authenticated retrieval. SigNoz health/version succeeded, setupCompleted=true, and the service-account self-check returned 200. Trace API direct lookup and agent.run_id search were rejected with 403 authz_forbidden because the service account lacks trace read access. MCP tool discovery succeeded, but trace details/search calls also returned upstream 403 authorization failures.",
+  "failed_stage": "mcp_normalization",
+  "full_comparison_exit_code": 0,
+  "gate2_fully_complete": true,
+  "mcp_blocker": null,
+  "provisional_evaluator_source": "SigNoz Trace API",
+  "reason": "Gate 2 loaded the latest Gate 1 manifest and attempted live authenticated retrieval. SigNoz health/version succeeded, setupCompleted=true, and the service-account self-check returned 200. Trace API direct lookup and agent.run_id search succeeded with complete structured telemetry, and the relationship fixture was retrieved with parent-child preservation. MCP health, initialize, initialized notification, tools/list, direct lookup, repeated direct lookup, and relationship direct lookup succeeded, but MCP telemetry was only partially structured because custom span attributes such as agent.run_id were missing from the normalized payload.",
   "sanitized": true,
-  "smallest_next_action": "Assign the service account a Viewer, Editor, Admin, or equivalent role that grants traces:read on builder_query/*, then rerun python gate2/main.py.",
+  "smallest_next_action": "Use SigNoz Trace API as the Gate 2 authoritative retrieval source unless MCP later exposes complete custom span attributes.",
   "test_result": {
     "full_suite": {
       "command": ".\\.venv\\Scripts\\python.exe -m pytest -v --basetemp .test-tmp-all -p no:cacheprovider",
-      "duration_seconds": 0.72,
+      "duration_seconds": 1.49,
       "failed": 0,
-      "passed": 117,
+      "passed": 119,
       "skipped": 0,
       "warnings": 0
     },
@@ -35,7 +35,7 @@
       "command": ".\\.venv\\Scripts\\python.exe -m pytest tests\\gate2 -v --basetemp .test-tmp-gate2 -p no:cacheprovider",
       "duration_seconds": 0.41,
       "failed": 0,
-      "passed": 95,
+      "passed": 97,
       "skipped": 0,
       "warnings": 0
     },
@@ -56,5 +56,5 @@
       "warnings": 0
     }
   },
-  "trace_api_blocker": "SIGNOZ_API_KEY was accepted by localhost SigNoz, but the service account is not authorized to perform traces:read on builder_query/*."
+  "trace_api_blocker": null
 }

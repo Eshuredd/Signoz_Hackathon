@@ -1005,11 +1005,14 @@ def search_result_containers(payload: Any) -> list[Any]:
         value = payload.get(key)
         if isinstance(value, list):
             containers.append(value)
+            for item in value:
+                containers.extend(search_result_containers(item))
         elif key == "data" and isinstance(value, dict):
             for nested_key in ("results", "rows"):
                 nested = value.get(nested_key)
                 if isinstance(nested, list):
                     containers.append(nested)
+            containers.extend(search_result_containers(value))
     return containers
 
 
@@ -1046,6 +1049,9 @@ def select_trace_id_for_run_id(hits: list[MCPTraceSearchHit], run_id: str) -> st
             return hit.trace_id
     if len(hits) == 1 and not hit_has_any_run_id(hits[0]):
         return hits[0].trace_id
+    trace_ids = {hit.trace_id for hit in hits}
+    if len(trace_ids) == 1 and not any(hit_has_any_run_id(hit) for hit in hits):
+        return hits[0].trace_id
     raise IncompleteMCPTelemetry(
         "MCP search returned trace IDs, but none could be validated against requested agent.run_id."
     )
@@ -1071,9 +1077,12 @@ def normalize_mcp_trace(raw_response: dict[str, Any]) -> Trace | None:
     if candidate is None:
         return None
     trace_object = find_trace_object(candidate)
-    if trace_object is None:
-        return None
-    return trace_from_mcp_object(trace_object)
+    if trace_object is not None:
+        return trace_from_mcp_object(trace_object)
+    rows = extract_trace_span_rows(candidate)
+    if rows:
+        return trace_from_mcp_rows(rows)
+    return None
 
 
 def extract_structured_payload(raw_response: dict[str, Any]) -> Any:
@@ -1131,6 +1140,42 @@ def trace_from_mcp_object(obj: dict[str, Any]) -> Trace:
     )
 
 
+def extract_trace_span_rows(payload: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for item in search_result_containers(payload):
+        if isinstance(item, list):
+            candidates = item
+        else:
+            candidates = [item]
+        for candidate in candidates:
+            if not isinstance(candidate, dict):
+                continue
+            row = ensure_dict(candidate.get("data")) or candidate
+            if row_has_span_identity(row):
+                rows.append(row)
+    return rows
+
+
+def row_has_span_identity(row: dict[str, Any]) -> bool:
+    return bool(first_string_value(row, TRACE_ID_KEYS)) and bool(
+        value_for(row, "span_id", "spanId", "spanID")
+    )
+
+
+def trace_from_mcp_rows(rows: list[dict[str, Any]]) -> Trace:
+    spans = [span_from_mcp_object(row) for row in rows]
+    trace_id = next((span.trace_id for span in spans if span.trace_id), "")
+    if not trace_id:
+        raise IncompleteMCPTelemetry("MCP trace rows did not contain trace_id.")
+    return Trace(
+        trace_id=trace_id,
+        spans=spans,
+        retrieved_at=now_utc(),
+        source=Source.MCP,
+        metadata={"normalization": "SigNoz MCP query rows"},
+    )
+
+
 def span_from_mcp_object(raw: dict[str, Any]) -> Span:
     trace_id = value_for(raw, "trace_id", "traceId", "traceID")
     span_id = value_for(raw, "span_id", "spanId", "spanID")
@@ -1155,7 +1200,11 @@ def span_from_mcp_object(raw: dict[str, Any]) -> Span:
         or raw.get("resourceAttributes")
         or raw.get("resource")
     )
+    if not resource:
+        resource = resource_attributes_from_flat_row(raw)
     attributes = ensure_dict(raw.get("attributes"))
+    if not attributes:
+        attributes = span_attributes_from_flat_row(raw, resource)
     service_name = resource.get("service.name") or raw.get("service_name") or raw.get("serviceName")
 
     return Span(
@@ -1179,6 +1228,66 @@ def value_for(raw: dict[str, Any], *names: str) -> Any:
         if name in raw:
             return raw[name]
     return None
+
+
+def resource_attributes_from_flat_row(raw: dict[str, Any]) -> dict[str, Any]:
+    prefixes = (
+        "cloud.",
+        "deployment.",
+        "host.",
+        "k8s.",
+        "service.",
+        "signoz.",
+    )
+    return {
+        key: value
+        for key, value in raw.items()
+        if value is not None and any(key.startswith(prefix) for prefix in prefixes)
+    }
+
+
+def span_attributes_from_flat_row(
+    raw: dict[str, Any],
+    resource: dict[str, Any],
+) -> dict[str, Any]:
+    intrinsic = {
+        "duration",
+        "durationNano",
+        "duration_nano",
+        "endTime",
+        "end_time",
+        "hasError",
+        "has_error",
+        "kind",
+        "kind_string",
+        "name",
+        "parentSpanID",
+        "parentSpanId",
+        "parent_span_id",
+        "spanID",
+        "spanId",
+        "span_id",
+        "startTime",
+        "start_time",
+        "status",
+        "statusCode",
+        "statusCodeString",
+        "statusMessage",
+        "status_code",
+        "status_code_string",
+        "status_message",
+        "time_unix",
+        "timestamp",
+        "traceID",
+        "traceId",
+        "trace_id",
+        "webUrl",
+    }
+    return {
+        key: value
+        for key, value in raw.items()
+        if value is not None and key not in intrinsic and key not in resource
+    }
 
 
 def parse_timestamp(raw: Any) -> datetime | None:

@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-07-25T07:39:00Z",
+  "captured_at": "2026-07-25T08:20:00Z",
   "configuration": {
     "SIGNOZ_API_KEY": "<set>",
     "SIGNOZ_BASE_URL": "http://localhost:8080",
@@ -28,15 +28,15 @@
   "live_ids": {
     "gate1a_first_successful_agent_run_id": "8848eb4c-c23a-44fd-ab7e-f23958c4bd77",
     "gate1a_first_successful_trace_id": "2fed5f0ffbd62b3be751af910e89c5e0",
-    "gate1a_latest_agent_run_id": "c56034ff-0f1c-4d1f-8992-83bd1df57264",
-    "gate1a_latest_trace_id": "a89c2a1295cf27fc6e661ff3506cd4e7",
+    "gate1a_latest_agent_run_id": "2f93baa3-b17f-4fe0-97be-80fb646f3110",
+    "gate1a_latest_trace_id": "c625f09f0672d266d7a28ba4da41db1f",
     "manifest_replaced_by_second_successful_run": true,
-    "relationship_child_parent_span_id": "08611f1108bc6662",
-    "relationship_child_span_id": "011fa70c54c58820",
+    "relationship_child_parent_span_id": "1bf72c5ea6f3833a",
+    "relationship_child_span_id": "b51c032a9593f0b0",
     "relationship_parent_link_valid_locally": true,
-    "relationship_root_span_id": "08611f1108bc6662",
-    "relationship_run_id": "gate2-ca0b28e0-0ee6-436d-9793-eb0b09d7c6a8",
-    "relationship_trace_id": "eedd684c8470dce7ddeefcf35bf34b79",
+    "relationship_root_span_id": "1bf72c5ea6f3833a",
+    "relationship_run_id": "gate2-621e7840-891d-4c02-92fd-910997ae6721",
+    "relationship_trace_id": "d9fb43d0f9b5dcadef12edae0b40e543",
     "service_account_self_check": "observed 200 with SIGNOZ-API-KEY"
   },
   "local_ingestion_note": "The repository compose ingester was initially replaced by OpAMP with nop pipelines before local SigNoz setup was completed. For Gate 1 live proof, the same collector image was run locally with the committed static collector config and without OpAMP manager config.",
@@ -60,9 +60,9 @@
   "test_result": {
     "full_suite": {
       "command": ".\\.venv\\Scripts\\python.exe -m pytest -v --basetemp .test-tmp-all -p no:cacheprovider",
-      "duration_seconds": 0.72,
+      "duration_seconds": 1.49,
       "failed": 0,
-      "passed": 117,
+      "passed": 119,
       "skipped": 0,
       "warnings": 0
     }

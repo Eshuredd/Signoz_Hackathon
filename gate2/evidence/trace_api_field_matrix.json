@@ -1,7 +1,7 @@
 {
   "basis": "Live authenticated Trace API attempt on 2026-07-25 using Gate 2 manifest fallback",
-  "captured_at": "2026-07-25T07:39:00Z",
-  "deterministic_evaluation": "not observed",
+  "captured_at": "2026-07-25T08:20:00Z",
+  "deterministic_evaluation": "observed",
   "expected_gate1a_attributes": [
     "agent.run_id",
     "traceguard.run_id",
@@ -9,20 +9,20 @@
     "traceguard.gate"
   ],
   "fields": {
-    "complete attributes": "unavailable from this API run",
-    "duration": "unavailable from this API run",
-    "end_time": "unavailable from this API run",
-    "parent_span_id": "unavailable from this API run",
-    "resource attributes": "unavailable from this API run",
-    "span_id": "unavailable from this API run",
-    "span_name": "unavailable from this API run",
-    "start_time": "unavailable from this API run",
-    "status": "unavailable from this API run",
-    "trace_id": "unavailable from this API run"
+    "complete attributes": "available",
+    "duration": "available",
+    "end_time": "available",
+    "parent_span_id": "available",
+    "resource attributes": "available",
+    "span_id": "available",
+    "span_name": "available",
+    "start_time": "available",
+    "status": "available",
+    "trace_id": "available"
   },
-  "reason": "The API key was accepted by local SigNoz, but direct trace lookup and agent.run_id search were rejected as unauthorized for trace reads.",
-  "response_classification": "not observed",
-  "runtime_state": "health/version observed; manifest IDs loaded; authenticated trace retrieval blocked by authorization",
+  "reason": "The API key was accepted by local SigNoz, direct trace lookup succeeded, and agent.run_id search returned the manifest trace.",
+  "response_classification": "complete structured telemetry",
+  "runtime_state": "health/version observed; manifest IDs loaded; authenticated trace retrieval succeeded",
   "sanitized": true,
   "source": "SigNoz Trace API"
 }

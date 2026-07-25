@@ -165,6 +165,43 @@ def test_multiple_spans_and_parent_child_preserved() -> None:
     assert trace.has_valid_parent_child_relationship()
 
 
+def test_nested_signoz_query_rows_normalize_trace() -> None:
+    root = complete_span()
+    child = complete_span("root")
+    root.pop("attributes")
+    root.pop("resource_attributes")
+    child.pop("attributes")
+    child.pop("resource_attributes")
+    root["service.name"] = "svc"
+    child["service.name"] = "svc"
+    raw = {
+        "result": {
+            "structuredContent": {
+                "data": {
+                    "data": {
+                        "results": [
+                            {
+                                "queryName": "A",
+                                "rows": [
+                                    {"data": root, "timestamp": root["start_time"]},
+                                    {"data": child, "timestamp": child["start_time"]},
+                                ],
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+
+    trace = normalize_mcp_trace(raw)
+
+    assert trace is not None
+    assert len(trace.spans) == 2
+    assert trace.has_valid_parent_child_relationship()
+    assert trace.spans[0].resource_attributes["service.name"] == "svc"
+
+
 def test_tool_arguments_derive_from_input_schema() -> None:
     details_tool = {"inputSchema": {"properties": {"traceId": {"type": "string"}}}}
     search_tool = {
@@ -324,9 +361,33 @@ def test_structured_search_hits_and_trace_id_variants() -> None:
 def test_search_rows_and_data_containers_are_accepted() -> None:
     rows_raw = {"result": {"structuredContent": {"rows": [{"data": {"traceID": "a" * 32}}]}}}
     data_raw = {"result": {"structuredContent": {"data": [{"trace_id": "b" * 32}]}}}
+    nested_raw = {
+        "result": {
+            "structuredContent": {
+                "data": {
+                    "data": {
+                        "results": [
+                            {"rows": [{"data": {"trace_id": "c" * 32}}]},
+                        ]
+                    }
+                }
+            }
+        }
+    }
 
     assert extract_trace_search_hits(rows_raw)[0].trace_id == "a" * 32
     assert extract_trace_search_hits(data_raw)[0].trace_id == "b" * 32
+    assert extract_trace_search_hits(nested_raw)[0].trace_id == "c" * 32
+
+
+def test_select_trace_id_accepts_duplicate_rows_for_same_trace_without_attributes() -> None:
+    hits = [
+        parse_trace_search_hit({"data": {"trace_id": "a" * 32, "span_id": "root"}}),
+        parse_trace_search_hit({"data": {"trace_id": "a" * 32, "span_id": "child"}}),
+    ]
+
+    assert all(hit is not None for hit in hits)
+    assert select_trace_id_for_run_id([hit for hit in hits if hit is not None], "run-1") == "a" * 32
 
 
 def test_json_content_results_container_is_accepted() -> None:
