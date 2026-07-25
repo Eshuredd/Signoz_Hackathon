@@ -1,5 +1,5 @@
 {
-  "attempted_at": "2026-07-25T08:20:00Z",
+  "attempted_at": "2026-07-25T08:51:04Z",
   "commands_attempted": [
     "docker version",
     "docker info",
@@ -27,7 +27,7 @@
   "results": {
     "blocker": "No external blocker. MCP direct trace retrieval succeeded, but the returned row-shaped telemetry lacks the requested custom run ID attributes needed to validate search-to-details.",
     "docker_available": true,
-    "failed_stage": "mcp_normalization",
+    "failed_stage": "mcp_attribute_search",
     "mcp_health_succeeded": true,
     "mcp_initialize_succeeded": true,
     "mcp_initialized_notification_succeeded": true,

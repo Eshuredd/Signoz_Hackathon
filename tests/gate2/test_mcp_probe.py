@@ -526,6 +526,13 @@ def complete_trace_response(trace_id: str = "a" * 32) -> dict[str, Any]:
     return {"result": {"structuredContent": {"trace_id": trace_id, "spans": [root, child]}}}
 
 
+def trace_without_agent_run_id(trace_id: str = "a" * 32) -> dict[str, Any]:
+    response = complete_trace_response(trace_id)
+    for span in response["result"]["structuredContent"]["spans"]:
+        span["attributes"].pop("agent.run_id", None)
+    return response
+
+
 def test_search_succeeds_details_retrieval_succeeds(tmp_path: Path) -> None:
     client = FakeMCPClient(
         [
@@ -845,6 +852,102 @@ def test_run_mcp_probe_stability_failure_is_not_overwritten_by_search_success(
     assert evidence.failed_stage == "mcp_stability_check"
 
 
+def test_run_mcp_probe_direct_success_search_missing_run_id_keeps_attribute_stage(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client = ProbeClient(
+        [
+            complete_trace_response("a" * 32),
+            complete_trace_response("a" * 32),
+            {"result": {"structuredContent": {"results": [{"trace_id": "a" * 32, "attributes": {"agent.run_id": "run-1"}}]}}},
+            trace_without_agent_run_id("a" * 32),
+        ]
+    )
+    monkeypatch.setattr("mcp_probe.MCPHttpClient", lambda config, logger: client)
+    monkeypatch.setattr("mcp_probe.fetch_signoz_version", lambda config: "test")
+
+    evidence = run_mcp_probe(config(), DummyLogger(), tmp_path)
+
+    assert evidence.direct_lookup.state == CapabilityState.OBSERVED
+    assert evidence.attribute_search.state == CapabilityState.FAILED
+    assert evidence.trace is not None
+    assert evidence.retrieval_workflow.state == CapabilityState.OBSERVED
+    assert evidence.response_stability.state == CapabilityState.OBSERVED
+    assert evidence.failed_stage == "mcp_attribute_search"
+    assert evidence.blocker is None
+    assert any(error.startswith("mcp_attribute_search:") for error in evidence.errors)
+    assert not any(error.startswith("mcp_normalization:") for error in evidence.errors)
+
+
+def test_run_mcp_probe_direct_normalization_failure_search_success_retains_search_trace(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client = ProbeClient(
+        [
+            {"result": {"structuredContent": {"summary": "no spans here"}}},
+            {"result": {"structuredContent": {"results": [{"trace_id": "a" * 32, "attributes": {"agent.run_id": "run-1"}}]}}},
+            complete_trace_response("a" * 32),
+            complete_trace_response("a" * 32),
+        ]
+    )
+    monkeypatch.setattr("mcp_probe.MCPHttpClient", lambda config, logger: client)
+    monkeypatch.setattr("mcp_probe.fetch_signoz_version", lambda config: "test")
+
+    evidence = run_mcp_probe(config(), DummyLogger(), tmp_path)
+
+    assert evidence.direct_lookup.state == CapabilityState.FAILED
+    assert evidence.attribute_search.state == CapabilityState.OBSERVED
+    assert evidence.trace is not None
+    assert evidence.retrieval_workflow.state == CapabilityState.OBSERVED
+    assert evidence.failed_stage == "mcp_normalization"
+
+
+def test_run_mcp_probe_no_unresolved_failure_clears_failed_stage(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client = ProbeClient(
+        [
+            complete_trace_response("a" * 32),
+            complete_trace_response("a" * 32),
+            {"result": {"structuredContent": {"results": [{"trace_id": "a" * 32, "attributes": {"agent.run_id": "run-1"}}]}}},
+            complete_trace_response("a" * 32),
+            complete_trace_response("a" * 32),
+        ]
+    )
+    monkeypatch.setattr("mcp_probe.MCPHttpClient", lambda config, logger: client)
+    monkeypatch.setattr("mcp_probe.fetch_signoz_version", lambda config: "test")
+
+    evidence = run_mcp_probe(config(), DummyLogger(), tmp_path)
+
+    assert evidence.failed_stage is None
+    assert evidence.errors == []
+
+
+def test_run_mcp_probe_stability_failure_beats_controlled_attribute_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client = ProbeClient(
+        [
+            complete_trace_response("a" * 32),
+            complete_trace_response("b" * 32),
+            {"result": {"structuredContent": {"results": [{"trace_id": "a" * 32, "attributes": {"agent.run_id": "run-1"}}]}}},
+            trace_without_agent_run_id("a" * 32),
+        ]
+    )
+    monkeypatch.setattr("mcp_probe.MCPHttpClient", lambda config, logger: client)
+    monkeypatch.setattr("mcp_probe.fetch_signoz_version", lambda config: "test")
+
+    evidence = run_mcp_probe(config(), DummyLogger(), tmp_path)
+
+    assert evidence.attribute_search.state == CapabilityState.FAILED
+    assert evidence.response_stability.state == CapabilityState.FAILED
+    assert evidence.failed_stage == "mcp_stability_check"
+
+
 def test_run_mcp_probe_preserves_relationship_validation_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     broken = complete_trace_response("a" * 32)
     broken["result"]["structuredContent"]["spans"][1]["parent_span_id"] = "missing"
@@ -855,6 +958,23 @@ def test_run_mcp_probe_preserves_relationship_validation_failure(monkeypatch: py
     evidence = run_mcp_probe(config_with(run_id=None), DummyLogger(), tmp_path)
 
     assert evidence.preserves_parent_child.state == CapabilityState.NOT_OBSERVED
+    assert evidence.failed_stage == "mcp_relationship_validation"
+
+
+def test_run_mcp_probe_relationship_failure_beats_clean_workflows(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    broken = complete_trace_response("a" * 32)
+    broken["result"]["structuredContent"]["spans"][1]["parent_span_id"] = "missing"
+    client = ProbeClient([broken, broken])
+    monkeypatch.setattr("mcp_probe.MCPHttpClient", lambda config, logger: client)
+    monkeypatch.setattr("mcp_probe.fetch_signoz_version", lambda config: "test")
+
+    evidence = run_mcp_probe(config_with(run_id=None), DummyLogger(), tmp_path)
+
+    assert evidence.retrieval_workflow.state == CapabilityState.OBSERVED
+    assert evidence.response_stability.state == CapabilityState.OBSERVED
     assert evidence.failed_stage == "mcp_relationship_validation"
 
 

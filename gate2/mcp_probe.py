@@ -389,15 +389,20 @@ def run_mcp_probe(
                     and evidence.response_stability.state != CapabilityState.FAILED
                 ):
                     evidence.failed_stage = None
+            elif evidence.direct_lookup.state == CapabilityState.FAILED:
+                record_workflow_failure(
+                    failed_workflow_stages,
+                    evidence.failed_stage or "mcp_direct_lookup",
+                )
         except Exception as exc:
             stage = evidence.failed_stage or "mcp_direct_lookup"
-            failed_workflow_stages.append(stage)
+            record_workflow_failure(failed_workflow_stages, stage)
             evidence.direct_lookup = CapabilityAssessment(
                 "direct trace lookup",
                 CapabilityState.FAILED,
                 f"{exc.__class__.__name__}: {exc}",
             )
-            evidence.errors.append(f"{stage}: {exc.__class__.__name__}: {exc}")
+            append_error_once(evidence.errors, f"{stage}: {exc.__class__.__name__}: {exc}")
 
         try:
             search_trace = try_mcp_attribute_search(
@@ -414,15 +419,20 @@ def run_mcp_probe(
                     and evidence.response_stability.state != CapabilityState.FAILED
                 ):
                     evidence.failed_stage = None
+            elif evidence.attribute_search.state == CapabilityState.FAILED:
+                record_workflow_failure(
+                    failed_workflow_stages,
+                    evidence.failed_stage or "mcp_attribute_search",
+                )
         except Exception as exc:
             stage = evidence.failed_stage or "mcp_attribute_search"
-            failed_workflow_stages.append(stage)
+            record_workflow_failure(failed_workflow_stages, stage)
             evidence.attribute_search = CapabilityAssessment(
                 "attribute-based trace search",
                 CapabilityState.FAILED,
                 f"{exc.__class__.__name__}: {exc}",
             )
-            evidence.errors.append(f"{stage}: {exc.__class__.__name__}: {exc}")
+            append_error_once(evidence.errors, f"{stage}: {exc.__class__.__name__}: {exc}")
 
         trace_id_mismatch = False
         if details_trace is not None and search_trace is not None:
@@ -433,15 +443,18 @@ def run_mcp_probe(
                     "mcp_details_from_search: direct lookup trace_id did not match "
                     "search-to-details trace_id"
                 )
-                if evidence.response_stability.state != CapabilityState.FAILED:
-                    evidence.failed_stage = "mcp_details_from_search"
             else:
                 evidence.observations["mcp_direct_search_trace_id_match"] = "succeeded"
 
         trace = details_trace or search_trace
 
         if trace is None:
-            evidence.failed_stage = failed_workflow_stages[-1] if failed_workflow_stages else "mcp_normalization"
+            evidence.failed_stage = resolve_mcp_failed_stage(
+                evidence,
+                failed_workflow_stages,
+                trace_id_mismatch=trace_id_mismatch,
+                relationship_failed=False,
+            ) or "mcp_normalization"
             if not any(error.startswith(f"{evidence.failed_stage}:") for error in evidence.errors):
                 evidence.errors.append(
                     f"{evidence.failed_stage}: no MCP direct or search-to-details workflow "
@@ -461,8 +474,6 @@ def run_mcp_probe(
             return evidence
 
         evidence.trace = trace
-        if evidence.response_stability.state != CapabilityState.FAILED and not trace_id_mismatch:
-            evidence.failed_stage = "mcp_normalization"
         evidence.field_assessments = trace.field_assessments()
         evidence.response_classification = classify_trace_structure(trace)
         evidence.deterministic_evaluation = deterministic_assessment(trace)
@@ -474,12 +485,13 @@ def run_mcp_probe(
         evidence.preserves_multiple_spans, evidence.preserves_parent_child = (
             relationship_capabilities(trace)
         )
+        relationship_failed = False
         if (
             trace.has_multiple_spans()
             and not trace.has_valid_parent_child_relationship()
             and evidence.response_stability.state != CapabilityState.FAILED
         ):
-            evidence.failed_stage = "mcp_relationship_validation"
+            relationship_failed = True
         if trace_id_mismatch:
             evidence.retrieval_workflow = CapabilityAssessment(
                 "retrieval workflow completeness",
@@ -500,15 +512,12 @@ def run_mcp_probe(
             CapabilityState.OBSERVED,
             "MCP availability, tool, and schema failures map to custom exceptions",
         )
-        if (
-            not evidence.errors
-            and
-            evidence.response_stability.state != CapabilityState.FAILED
-            and evidence.failed_stage != "mcp_relationship_validation"
-        ):
-            evidence.failed_stage = None
-        elif evidence.errors and failed_workflow_stages:
-            evidence.failed_stage = failed_workflow_stages[-1]
+        evidence.failed_stage = resolve_mcp_failed_stage(
+            evidence,
+            failed_workflow_stages,
+            trace_id_mismatch=trace_id_mismatch,
+            relationship_failed=relationship_failed,
+        )
         normalized_path = write_json_artifact(
             artifacts_dir / "mcp_normalized.json",
             trace.to_dict(),
@@ -562,6 +571,34 @@ def run_mcp_probe(
         )
 
     return evidence
+
+
+def record_workflow_failure(stages: list[str], stage: str | None) -> None:
+    if stage and stage not in stages:
+        stages.append(stage)
+
+
+def append_error_once(errors: list[str], message: str) -> None:
+    if message not in errors:
+        errors.append(message)
+
+
+def resolve_mcp_failed_stage(
+    evidence: ProbeEvidence,
+    failed_workflow_stages: list[str],
+    *,
+    trace_id_mismatch: bool,
+    relationship_failed: bool,
+) -> str | None:
+    if evidence.response_stability.state == CapabilityState.FAILED:
+        return "mcp_stability_check"
+    if relationship_failed:
+        return "mcp_relationship_validation"
+    if trace_id_mismatch:
+        return "mcp_details_from_search"
+    if failed_workflow_stages:
+        return failed_workflow_stages[-1]
+    return None
 
 
 def unavailable_if_not_set(

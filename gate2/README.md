@@ -19,7 +19,7 @@ Current decision for this live run:
 TRACE_API_AUTHORITATIVE
 ```
 
-Provisional evaluator source for this run: `SigNoz Trace API`.
+Authoritative evaluator source for this run: `SigNoz Trace API`.
 
 Gate 2 is complete for this phase: Trace API is the authoritative retrieval source, while MCP is meaningfully tested but incomplete for evaluator-grade telemetry.
 
@@ -175,8 +175,8 @@ Latest MCP results:
 - Search-to-details: failed; the normalized trace did not expose the requested `agent.run_id` in available attributes.
 - Relationship retrieval: observed through direct lookup; both fixture spans were normalized and the child `parent_span_id` was preserved.
 - Stability check: observed; repeated direct details retrieval returned stable structural fields.
-- Exact failed stage: `mcp_normalization`.
-- Blocker: none external. MCP is incomplete because custom span attributes are absent or transformed in the returned row payload.
+- Exact failed stage: `mcp_attribute_search`.
+- Blocker: none external. MCP search-to-details normalized structured telemetry but could not validate the requested `agent.run_id` because that custom attribute was absent from the returned row payload.
 
 ## Run
 
@@ -281,5 +281,5 @@ Latest results:
 - runtime: `15 passed`, `0 failed`, `0 skipped`
 - Gate 1: `7 passed`, `0 failed`, `0 skipped`
 - Gate 2 config: `26 passed`, `0 failed`, `0 skipped`
-- all Gate 2: `97 passed`, `0 failed`, `0 skipped`
-- full suite: `119 passed`, `0 failed`, `0 skipped`
+- all Gate 2: `102 passed`, `0 failed`, `0 skipped`
+- full suite: `124 passed`, `0 failed`, `0 skipped`

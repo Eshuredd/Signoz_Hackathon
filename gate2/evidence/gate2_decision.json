@@ -1,17 +1,19 @@
 {
-  "captured_at": "2026-07-25T08:20:00Z",
+  "authoritative_evaluator_source": "SigNoz Trace API",
+  "captured_at": "2026-07-25T08:51:04Z",
   "decision": "TRACE_API_AUTHORITATIVE",
+  "evaluator_source_status": "authoritative",
   "exit_code_policy": {
     "0": "Both interfaces were meaningfully tested and a final evidence-based source decision was produced.",
     "1": "Trace API is unusable, authentication/configuration is invalid, or no usable source exists.",
     "2": "Trace API is provisionally usable but MCP could not be meaningfully tested because of an external blocker."
   },
-  "failed_stage": "mcp_normalization",
+  "failed_stage": "mcp_attribute_search",
   "full_comparison_exit_code": 0,
   "gate2_fully_complete": true,
   "mcp_blocker": null,
   "provisional_evaluator_source": "SigNoz Trace API",
-  "reason": "Gate 2 loaded the latest Gate 1 manifest and attempted live authenticated retrieval. SigNoz health/version succeeded, setupCompleted=true, and the service-account self-check returned 200. Trace API direct lookup and agent.run_id search succeeded with complete structured telemetry, and the relationship fixture was retrieved with parent-child preservation. MCP health, initialize, initialized notification, tools/list, direct lookup, repeated direct lookup, and relationship direct lookup succeeded, but MCP telemetry was only partially structured because custom span attributes such as agent.run_id were missing from the normalized payload.",
+  "reason": "Gate 2 loaded the latest Gate 1 manifest and attempted live authenticated retrieval. SigNoz health/version succeeded, setupCompleted=true, and the service-account self-check returned 200. Trace API direct lookup and agent.run_id search succeeded with complete structured telemetry, and the relationship fixture was retrieved with parent-child preservation. MCP health, initialize, initialized notification, tools/list, direct lookup, repeated direct lookup, and relationship direct lookup succeeded. MCP search-to-details normalized structured telemetry but could not validate the requested agent.run_id because the returned MCP payload did not expose that custom attribute.",
   "sanitized": true,
   "smallest_next_action": "Use SigNoz Trace API as the Gate 2 authoritative retrieval source unless MCP later exposes complete custom span attributes.",
   "test_result": {
@@ -19,7 +21,7 @@
       "command": ".\\.venv\\Scripts\\python.exe -m pytest -v --basetemp .test-tmp-all -p no:cacheprovider",
       "duration_seconds": 1.49,
       "failed": 0,
-      "passed": 119,
+      "passed": 124,
       "skipped": 0,
       "warnings": 0
     },
@@ -35,7 +37,7 @@
       "command": ".\\.venv\\Scripts\\python.exe -m pytest tests\\gate2 -v --basetemp .test-tmp-gate2 -p no:cacheprovider",
       "duration_seconds": 0.41,
       "failed": 0,
-      "passed": 97,
+      "passed": 102,
       "skipped": 0,
       "warnings": 0
     },
