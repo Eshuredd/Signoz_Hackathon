@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-07-25T07:28:17Z",
+  "captured_at": "2026-07-25T07:39:00Z",
   "configuration": {
     "SIGNOZ_API_KEY": "<set>",
     "SIGNOZ_BASE_URL": "http://localhost:8080",
@@ -28,15 +28,16 @@
   "live_ids": {
     "gate1a_first_successful_agent_run_id": "8848eb4c-c23a-44fd-ab7e-f23958c4bd77",
     "gate1a_first_successful_trace_id": "2fed5f0ffbd62b3be751af910e89c5e0",
-    "gate1a_latest_agent_run_id": "b777c572-9a86-41b6-80df-006e1f7bdff1",
-    "gate1a_latest_trace_id": "8f33780518edab055f88e9a0b4be27a3",
+    "gate1a_latest_agent_run_id": "c56034ff-0f1c-4d1f-8992-83bd1df57264",
+    "gate1a_latest_trace_id": "a89c2a1295cf27fc6e661ff3506cd4e7",
     "manifest_replaced_by_second_successful_run": true,
-    "relationship_child_parent_span_id": "07fb3ad378ac9998",
-    "relationship_child_span_id": "cac3067162644836",
+    "relationship_child_parent_span_id": "08611f1108bc6662",
+    "relationship_child_span_id": "011fa70c54c58820",
     "relationship_parent_link_valid_locally": true,
-    "relationship_root_span_id": "07fb3ad378ac9998",
-    "relationship_run_id": "gate2-b777ae46-5bfa-45af-9a9b-eeaa244b87f7",
-    "relationship_trace_id": "020ad9603fcc933b4769fe2c3efc8466"
+    "relationship_root_span_id": "08611f1108bc6662",
+    "relationship_run_id": "gate2-ca0b28e0-0ee6-436d-9793-eb0b09d7c6a8",
+    "relationship_trace_id": "eedd684c8470dce7ddeefcf35bf34b79",
+    "service_account_self_check": "observed 200 with SIGNOZ-API-KEY"
   },
   "local_ingestion_note": "The repository compose ingester was initially replaced by OpAMP with nop pipelines before local SigNoz setup was completed. For Gate 1 live proof, the same collector image was run locally with the committed static collector config and without OpAMP manager config.",
   "mcp": {

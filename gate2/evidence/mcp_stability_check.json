@@ -1,10 +1,10 @@
 {
-  "captured_at": "2026-07-25T07:28:17Z",
+  "captured_at": "2026-07-25T07:39:00Z",
   "excluded_values": [
     "retrieved_at"
   ],
   "failed_stage": "mcp_search_result_parsing",
-  "reason": "MCP trace tool calls returned upstream unauthenticated responses, so no repeated structured trace retrieval workflow could run.",
+  "reason": "MCP trace tool calls returned upstream 403 authorization failures, so no repeated structured trace retrieval workflow could run.",
   "required_comparison": [
     "same trace ID",
     "same span count",

@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-07-25T07:28:17Z",
+  "captured_at": "2026-07-25T07:39:00Z",
   "fields": {
     "complete attributes": "unavailable",
     "duration": "unavailable",
@@ -12,7 +12,7 @@
     "status": "unavailable",
     "trace_id": "unavailable"
   },
-  "reason": "MCP trace details and trace search tool calls reached the server but returned upstream unauthenticated responses, so no structured trace object was normalized.",
+  "reason": "MCP trace details and trace search tool calls reached the server but returned upstream 403 authorization failures, so no structured trace object was normalized.",
   "runtime_state": "MCP /livez, initialize, initialized notification, and tools/list succeeded; trace tool calls failed.",
   "sanitized": true,
   "source": "SigNoz MCP"

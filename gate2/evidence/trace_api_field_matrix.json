@@ -1,6 +1,6 @@
 {
   "basis": "Live authenticated Trace API attempt on 2026-07-25 using Gate 2 manifest fallback",
-  "captured_at": "2026-07-25T07:28:17Z",
+  "captured_at": "2026-07-25T07:39:00Z",
   "deterministic_evaluation": "not observed",
   "expected_gate1a_attributes": [
     "agent.run_id",
@@ -20,9 +20,9 @@
     "status": "unavailable from this API run",
     "trace_id": "unavailable from this API run"
   },
-  "reason": "The API key was present but local SigNoz rejected direct trace lookup and agent.run_id search as unauthenticated.",
+  "reason": "The API key was accepted by local SigNoz, but direct trace lookup and agent.run_id search were rejected as unauthorized for trace reads.",
   "response_classification": "not observed",
-  "runtime_state": "health/version observed; manifest IDs loaded; authenticated trace retrieval failed",
+  "runtime_state": "health/version observed; manifest IDs loaded; authenticated trace retrieval blocked by authorization",
   "sanitized": true,
   "source": "SigNoz Trace API"
 }

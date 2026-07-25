@@ -1,13 +1,13 @@
 {
   "agent_run_id_search": {
-    "reason": "Authenticated request returned AuthenticationFailure: unauthenticated.",
+    "reason": "Authenticated request returned AuthorizationFailure: authz_forbidden; only viewers/editors/admins can access this resource.",
     "status": "failed"
   },
   "authentication_required": "observed",
-  "authentication_result": "SIGNOZ_API_KEY <set>; request rejected as unauthenticated; no secret value printed",
-  "captured_at": "2026-07-25T07:28:17Z",
+  "authentication_result": "SIGNOZ_API_KEY <set>; service-account self-check returned 200; no secret value printed",
+  "captured_at": "2026-07-25T07:39:00Z",
   "direct_lookup": {
-    "reason": "Authenticated request returned AuthenticationFailure: unauthenticated.",
+    "reason": "Authenticated request returned AuthorizationFailure: authz_forbidden; service account is not authorized for traces:read on builder_query/*.",
     "status": "failed"
   },
   "expected_custom_attributes": [
@@ -18,8 +18,8 @@
   ],
   "health": "ok",
   "live_ids_available": {
-    "agent_run_id": "b777c572-9a86-41b6-80df-006e1f7bdff1",
-    "trace_id": "8f33780518edab055f88e9a0b4be27a3"
+    "agent_run_id": "c56034ff-0f1c-4d1f-8992-83bd1df57264",
+    "trace_id": "a89c2a1295cf27fc6e661ff3506cd4e7"
   },
   "manifest_fallback": {
     "manifest_path": ".traceguard/runtime/latest_gate1.json",
@@ -27,7 +27,7 @@
   },
   "retrieval_workflow_completeness": "not observed",
   "sanitized": true,
-  "smallest_next_action": "Replace SIGNOZ_API_KEY with a valid service-account key for this localhost instance, then rerun python gate2/signoz_api_client.py.",
+  "smallest_next_action": "Assign the service account a Viewer, Editor, Admin, or equivalent role that grants traces:read on builder_query/*, then rerun python gate2/signoz_api_client.py.",
   "source": "SigNoz Trace API",
   "version": "v0.134.0"
 }
