@@ -36,15 +36,19 @@ class PreflightRetrievalError(Exception):
 
 @dataclass(frozen=True)
 class PreflightEnvironmentCheck:
-    health: dict[str, object]
-    version: dict[str, object]
+    health_ok: bool
+    health_response_summary: dict[str, object]
+    version_ok: bool
+    signoz_version: str
     authenticated_trace_api_access: bool
     checked_at: str
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "health": self.health,
-            "version": self.version,
+            "health_ok": self.health_ok,
+            "health_response_summary": self.health_response_summary,
+            "version_ok": self.version_ok,
+            "signoz_version": self.signoz_version,
             "authenticated_trace_api_access": self.authenticated_trace_api_access,
             "checked_at": self.checked_at,
         }
@@ -84,11 +88,17 @@ class PreflightTraceAPIAdapter:
 
     def run_environment_check(self) -> PreflightEnvironmentCheck:
         health = self.check_health()
+        health_ok = health.get("status") == "ok"
+        if not health_ok:
+            raise InvalidResponseSchema("SigNoz health response did not report status=ok.")
         version = self.read_version()
+        signoz_version = _extract_version(version)
         access = self.verify_authenticated_trace_api_access()
         return PreflightEnvironmentCheck(
-            health=health,
-            version=version,
+            health_ok=health_ok,
+            health_response_summary=_health_summary(health),
+            version_ok=True,
+            signoz_version=signoz_version,
             authenticated_trace_api_access=access,
             checked_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         )
@@ -192,3 +202,15 @@ def _readiness_retry_reason(trace: Trace, expected_span_count: int, preflight_id
     if missing_correlation:
         return "retrieved_trace_missing_preflight_correlation"
     return None
+
+
+def _health_summary(health: dict[str, object]) -> dict[str, object]:
+    return {
+        "status": health.get("status"),
+        "ok": health.get("status") == "ok",
+    }
+
+
+def _extract_version(version: dict[str, object]) -> str:
+    raw = version.get("version") or version.get("tag") or version.get("buildVersion")
+    return str(raw) if raw else "unknown"

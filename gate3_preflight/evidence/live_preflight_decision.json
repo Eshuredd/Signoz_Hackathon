@@ -1,16 +1,17 @@
 {
-  "SigNoz_version": "unavailable - health/version endpoints unreachable",
-  "authenticated_trace_api_access": "not attempted - health/version connection failed",
+  "SigNoz_version": "v0.134.0",
+  "authenticated_trace_api_access": true,
   "authoritative_source": "SigNoz Trace API",
-  "blocker": "Docker Desktop engine pipe was unavailable and SigNoz http://localhost:8080 health/version endpoints refused connections. Live preflight stopped before OTLP export.",
-  "captured_at": "2026-07-25T15:58:34Z",
-  "contract_realign_complete": false,
-  "decision": "blocked_on_local_infrastructure",
+  "captured_at": "2026-07-25T16:26:38Z",
+  "check_environment_exit_code": 0,
+  "contract_realign_complete": true,
+  "decision": "live_preflight_complete",
+  "docker_status": "available: Docker Desktop 4.47.0, Engine 28.4.0",
   "expected_exit_code": 0,
-  "health_check_result": "failed: unable to connect to http://localhost:8080/api/v1/health",
-  "live_command_exit_code": 3,
+  "health_check_result": "passed: status=ok",
+  "live_command_exit_code": 0,
   "otlp_endpoint": "http://localhost:4318/v1/traces",
-  "runtime_batch_id": "20260725T155828Z-ec756c6f91d9",
+  "runtime_batch_id": "20260725T162631Z-4c529a41e551",
   "sanitized": true,
-  "smallest_unblock": "Start the existing local Docker/SigNoz stack, confirm health/version and OTLP HTTP traces availability, then rerun gate3_preflight/main.py."
+  "smallest_next_action": "Design Gate 3B using the proven traceguard-telemetry-v2 contract and live SigNoz run bundles, while continuing to defer TG-AGT agent-behaviour rules."
 }

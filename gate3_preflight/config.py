@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from dotenv import load_dotenv
 
@@ -113,7 +113,22 @@ def _otlp_traces_endpoint() -> str:
 
 
 def _append_traces_path(name: str, value: str) -> str:
-    cleaned = _http_url(name, value)
-    if cleaned.endswith("/v1/traces"):
-        return cleaned
-    return cleaned.rstrip("/") + "/v1/traces"
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"}:
+        raise PreflightConfigError(f"{name} must be an http(s) URL.")
+    if not parsed.netloc:
+        raise PreflightConfigError(f"{name} must include a network location.")
+    if parsed.query or parsed.fragment:
+        raise PreflightConfigError(f"{name} must not contain a query string or fragment.")
+
+    path = parsed.path.rstrip("/")
+    if path in {"", "/"}:
+        normalized_path = "/v1/traces"
+    elif path == "/v1":
+        normalized_path = "/v1/traces"
+    elif path.endswith("/v1/traces"):
+        normalized_path = path
+    else:
+        normalized_path = path + "/v1/traces"
+
+    return urlunparse((parsed.scheme, parsed.netloc, normalized_path, "", "", ""))

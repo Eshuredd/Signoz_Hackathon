@@ -1,40 +1,167 @@
 {
-  "SigNoz_version": "unavailable - health/version endpoints unreachable",
-  "authenticated_trace_api_access": "not attempted - health/version connection failed",
+  "SigNoz_version": "v0.134.0",
+  "authenticated_trace_api_access": true,
   "authoritative_source": "SigNoz Trace API",
-  "blocker": "Docker Desktop engine pipe was unavailable and SigNoz http://localhost:8080 health/version endpoints refused connections. Live preflight stopped before OTLP export.",
-  "captured_at": "2026-07-25T15:58:34Z",
-  "contract_realign_complete": false,
-  "docker_status": "unavailable",
+  "captured_at": "2026-07-25T16:26:38Z",
+  "check_environment_exit_code": 0,
+  "contract_realign_complete": true,
+  "docker_status": "available: Docker Desktop 4.47.0, Engine 28.4.0",
   "expected_exit_code": 0,
-  "health_check_result": "failed: unable to connect to http://localhost:8080/api/v1/health",
-  "incomplete_scenario": {
-    "actual_rule_statuses": null,
-    "actual_verdict": null,
-    "discovered_trace_id": null,
-    "emitted_span_ids": null,
-    "emitted_trace_id": null,
-    "expected_rule_statuses": null,
-    "expected_verdict": "BLOCK",
-    "retrieved_trace_id": null,
-    "verification": "not run"
+  "health_check_result": {
+    "health_ok": true,
+    "status": "ok",
+    "version_ok": true
   },
-  "live_command_exit_code": 3,
+  "incomplete_scenario": {
+    "actual_rule_statuses": {
+      "TG-STR-001": "PASSED",
+      "TG-STR-002": "PASSED",
+      "TG-STR-003": "PASSED",
+      "TG-STR-004": "PASSED",
+      "TG-STR-005": "PASSED",
+      "TG-TEL-001": "PASSED",
+      "TG-TEL-002": "FAILED",
+      "TG-TEL-003A": "PASSED",
+      "TG-TEL-003B": "NOT_APPLICABLE",
+      "TG-TEL-004": "FAILED",
+      "TG-TEL-005": "FAILED",
+      "TG-TEL-006": "FAILED",
+      "TG-TEL-007": "PASSED",
+      "TG-TEL-008": "NOT_APPLICABLE"
+    },
+    "actual_verdict": "BLOCK",
+    "discovered_trace_id": "d357829b86b7a0f10e3d3ff4c75cade9",
+    "elapsed_ms": 2501,
+    "emitted_parent_span_ids": {
+      "agent.run": null,
+      "model.call": "69962d73bd5f188d",
+      "tool.call": "69962d73bd5f188d"
+    },
+    "emitted_span_ids": {
+      "agent.run": "69962d73bd5f188d",
+      "model.call": "e6d208729c0154d5",
+      "tool.call": "28e9fd22a49f480c"
+    },
+    "emitted_trace_id": "d357829b86b7a0f10e3d3ff4c75cade9",
+    "expected_rule_statuses": {
+      "TG-STR-001": "PASSED",
+      "TG-STR-002": "PASSED",
+      "TG-STR-003": "PASSED",
+      "TG-STR-004": "PASSED",
+      "TG-STR-005": "PASSED",
+      "TG-TEL-001": "PASSED",
+      "TG-TEL-002": "FAILED",
+      "TG-TEL-003A": "PASSED",
+      "TG-TEL-003B": "NOT_APPLICABLE",
+      "TG-TEL-004": "FAILED",
+      "TG-TEL-005": "FAILED",
+      "TG-TEL-006": "FAILED",
+      "TG-TEL-007": "PASSED",
+      "TG-TEL-008": "NOT_APPLICABLE"
+    },
+    "expected_verdict": "BLOCK",
+    "retrieval_attempts": 1,
+    "retrieved_span_ids": {
+      "agent.run": "69962d73bd5f188d",
+      "model.call": "e6d208729c0154d5",
+      "tool.call": "28e9fd22a49f480c"
+    },
+    "retrieved_trace_id": "d357829b86b7a0f10e3d3ff4c75cade9",
+    "search_attempts": 2,
+    "verification": {
+      "intentional_absences_preserved": true,
+      "parent_relationships_match": true,
+      "passed": true,
+      "preflight_correlation_match": true,
+      "required_attributes_preserved": true,
+      "service_identity_preserved": true,
+      "span_ids_match": true,
+      "timing_preserved": true,
+      "trace_id_match": true
+    }
+  },
+  "live_command_exit_code": 0,
+  "offline_test_counts": {
+    "full_suite": "239 passed",
+    "gate1": "7 passed",
+    "gate2": "102 passed",
+    "gate3": "50 passed",
+    "gate3_preflight_offline": "65 passed",
+    "runtime": "15 passed"
+  },
   "otlp_endpoint": "http://localhost:4318/v1/traces",
-  "parent_child_preservation": "not proven - live preflight did not export",
-  "preflight_correlation_preservation": "not proven - live preflight did not export",
-  "required_attribute_preservation": "not proven - live preflight did not export",
-  "runtime_batch_id": "20260725T155828Z-ec756c6f91d9",
+  "parent_child_preservation": true,
+  "preflight_correlation_preservation": true,
+  "required_attribute_preservation": true,
+  "runtime_batch_id": "20260725T162631Z-4c529a41e551",
   "sanitized": true,
+  "secret_scan": "passed",
   "valid_scenario": {
-    "actual_rule_statuses": null,
-    "actual_verdict": null,
-    "discovered_trace_id": null,
-    "emitted_span_ids": null,
-    "emitted_trace_id": null,
-    "expected_rule_statuses": null,
+    "actual_rule_statuses": {
+      "TG-STR-001": "PASSED",
+      "TG-STR-002": "PASSED",
+      "TG-STR-003": "PASSED",
+      "TG-STR-004": "PASSED",
+      "TG-STR-005": "PASSED",
+      "TG-TEL-001": "PASSED",
+      "TG-TEL-002": "PASSED",
+      "TG-TEL-003A": "PASSED",
+      "TG-TEL-003B": "NOT_APPLICABLE",
+      "TG-TEL-004": "PASSED",
+      "TG-TEL-005": "PASSED",
+      "TG-TEL-006": "PASSED",
+      "TG-TEL-007": "PASSED",
+      "TG-TEL-008": "NOT_APPLICABLE"
+    },
+    "actual_verdict": "PASS",
+    "discovered_trace_id": "c83ef15e39ff836c9471f8cbd8ba5257",
+    "elapsed_ms": 3625,
+    "emitted_parent_span_ids": {
+      "agent.run": null,
+      "model.call": "172a3ae28032aacb",
+      "tool.call": "172a3ae28032aacb"
+    },
+    "emitted_span_ids": {
+      "agent.run": "172a3ae28032aacb",
+      "model.call": "4291ac39ec28091d",
+      "tool.call": "8552eda0fe0da00b"
+    },
+    "emitted_trace_id": "c83ef15e39ff836c9471f8cbd8ba5257",
+    "expected_rule_statuses": {
+      "TG-STR-001": "PASSED",
+      "TG-STR-002": "PASSED",
+      "TG-STR-003": "PASSED",
+      "TG-STR-004": "PASSED",
+      "TG-STR-005": "PASSED",
+      "TG-TEL-001": "PASSED",
+      "TG-TEL-002": "PASSED",
+      "TG-TEL-003A": "PASSED",
+      "TG-TEL-003B": "NOT_APPLICABLE",
+      "TG-TEL-004": "PASSED",
+      "TG-TEL-005": "PASSED",
+      "TG-TEL-006": "PASSED",
+      "TG-TEL-007": "PASSED",
+      "TG-TEL-008": "NOT_APPLICABLE"
+    },
     "expected_verdict": "PASS",
-    "retrieved_trace_id": null,
-    "verification": "not run"
+    "retrieval_attempts": 1,
+    "retrieved_span_ids": {
+      "agent.run": "172a3ae28032aacb",
+      "model.call": "4291ac39ec28091d",
+      "tool.call": "8552eda0fe0da00b"
+    },
+    "retrieved_trace_id": "c83ef15e39ff836c9471f8cbd8ba5257",
+    "search_attempts": 2,
+    "verification": {
+      "intentional_absences_preserved": true,
+      "parent_relationships_match": true,
+      "passed": true,
+      "preflight_correlation_match": true,
+      "required_attributes_preserved": true,
+      "service_identity_preserved": true,
+      "span_ids_match": true,
+      "timing_preserved": true,
+      "trace_id_match": true
+    }
   }
 }

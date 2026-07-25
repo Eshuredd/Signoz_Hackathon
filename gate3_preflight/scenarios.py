@@ -25,6 +25,22 @@ class PreflightScenario:
     expected_statuses: dict[str, str]
 
 
+@dataclass(frozen=True)
+class ScenarioDefinition:
+    name: str
+    expected_verdict: str
+    expected_statuses: dict[str, str]
+    description: str
+
+    def to_public_dict(self) -> dict[str, object]:
+        return {
+            "name": self.name,
+            "expected_verdict": self.expected_verdict,
+            "expected_rule_statuses": dict(sorted(self.expected_statuses.items())),
+            "description": self.description,
+        }
+
+
 CANONICAL_VALID_STATUSES = {
     "TG-TEL-001": "PASSED",
     "TG-TEL-002": "PASSED",
@@ -58,6 +74,22 @@ CANONICAL_INCOMPLETE_STATUSES = {
     "TG-STR-004": "PASSED",
     "TG-STR-005": "PASSED",
 }
+
+
+SCENARIO_DEFINITIONS = (
+    ScenarioDefinition(
+        name="canonical_valid",
+        expected_verdict="PASS",
+        expected_statuses=dict(CANONICAL_VALID_STATUSES),
+        description="Canonical three-span agent/tool/model trace with all required telemetry fields.",
+    ),
+    ScenarioDefinition(
+        name="canonical_incomplete",
+        expected_verdict="BLOCK",
+        expected_statuses=dict(CANONICAL_INCOMPLETE_STATUSES),
+        description="Canonical three-span trace with intentional required-field omissions.",
+    ),
+)
 
 
 def canonical_valid() -> PreflightScenario:
@@ -104,6 +136,28 @@ def scenarios() -> tuple[PreflightScenario, PreflightScenario]:
     for item in items:
         validate_scenario_expectations(item)
     return items
+
+
+def scenario_catalogue() -> dict[str, object]:
+    for definition in SCENARIO_DEFINITIONS:
+        validate_scenario_definition(definition)
+    return {
+        "ruleset_version": "traceguard-telemetry-v2",
+        "scenario_count": len(SCENARIO_DEFINITIONS),
+        "scenarios": [definition.to_public_dict() for definition in SCENARIO_DEFINITIONS],
+    }
+
+
+def validate_scenario_definition(definition: ScenarioDefinition) -> None:
+    scenario = PreflightScenario(
+        name=definition.name,
+        preflight_id="catalogue-preflight-id",
+        agent_run_id="catalogue-agent-run-id",
+        spans=(),
+        expected_verdict=definition.expected_verdict,
+        expected_statuses=dict(definition.expected_statuses),
+    )
+    validate_scenario_expectations(scenario)
 
 
 def validate_scenario_expectations(scenario: PreflightScenario) -> None:
