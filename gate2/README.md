@@ -9,19 +9,19 @@ This gate only evaluates retrieval evidence. It does not implement Gate 3, malfo
 
 ## Current Status
 
-Gate 2A is implemented but requires `SIGNOZ_API_KEY` for live retrieval. In the latest live run on 2026-07-23, SigNoz health and version succeeded, but direct lookup and `agent.run_id` search were not attempted because `SIGNOZ_API_KEY` was `<unset>` in the repository-root `.env`.
+Gate 2A is implemented and now loads the latest Gate 1 trace context from `.traceguard/runtime/latest_gate1.json` when the dynamic ID overrides are blank. In the latest live run on 2026-07-25, Gate 2 loaded the manifest source correctly and `SIGNOZ_API_KEY` was `<set>`, but localhost SigNoz rejected direct lookup and `agent.run_id` search as `AuthenticationFailure: unauthenticated`.
 
-Gate 2B is implemented with Streamable HTTP request/notification separation, MCP session ID reuse, SSE event parsing, exact MCP failure-stage preservation, conservative structured search-result parsing, tool discovery from `tools/list`, schema-derived arguments, direct/search workflow independence, and search-to-details retrieval. In the latest live run, MCP health succeeded, but `initialize` failed with HTTP `401` because `SIGNOZ_API_KEY` was `<unset>`.
+Gate 2B is implemented with Streamable HTTP request/notification separation, MCP session ID reuse, SSE event parsing, exact MCP failure-stage preservation, conservative structured search-result parsing, tool discovery from `tools/list`, schema-derived arguments, direct/search workflow independence, and search-to-details retrieval. In the latest live run, MCP health, initialize, initialized notification, and `tools/list` succeeded. The server exposed `signoz_get_trace_details` and `signoz_search_traces`, but trace tool calls returned upstream unauthenticated responses from SigNoz.
 
-Current decision for this no-key live run:
+Current decision for this live run:
 
 ```text
 HYBRID_REQUIRES_MORE_EVIDENCE
 ```
 
-Provisional evaluator source for this no-key run: `none`. When a keyed Trace API direct lookup with complete fields succeeds, the Trace API remains the provisional evaluator source unless MCP is fully demonstrated.
+Provisional evaluator source for this run: `none`. When a valid local service-account key allows Trace API direct lookup with complete fields, the Trace API remains the provisional evaluator source unless MCP is fully demonstrated.
 
-Gate 2 is not fully complete yet because authenticated Trace API and MCP telemetry retrieval could not be runtime-tested.
+Gate 2 is not fully complete yet because authenticated Trace API telemetry retrieval is still rejected by the local SigNoz instance.
 
 ## Live Commands
 
@@ -48,14 +48,14 @@ docker logs --tail 120 signoz-mcp
 Observed live state:
 
 - Docker daemon available: yes
-- Docker client/server: `29.4.3`
-- Docker Compose: `v5.1.4`
-- Foundry: `v0.2.15`
-- SigNoz: `v0.133.0`, `ee=Y`, `setupCompleted=true`
+- Docker client/server: `28.4.0`
+- Docker Compose: `v2.39.4-desktop.1`
+- SigNoz: `v0.134.0`, `ee=Y`, `setupCompleted=false`
 - MCP image: `signoz/signoz-mcp-server:latest`
-- MCP server version from logs: `v0.9.0`
+- MCP server version from logs: `main-f6086b3`
 - MCP `/livez`: `ok`
 - Docker health for `signoz-mcp`: `unhealthy` because the generated healthcheck invokes `wget`, which is absent in the MCP image; external `/livez` succeeded.
+- The repository compose ingester was initially replaced by OpAMP with `nop` pipelines because SigNoz had no org. Gate 1 live proof was completed by running the same collector image with the committed static collector config and without OpAMP manager config.
 
 ## Service Account And Runtime IDs
 
@@ -106,18 +106,22 @@ Providing only one explicit ID raises a configuration error rather than mixing i
 Gate 1A generated:
 
 ```text
-TRACEGUARD_AGENT_RUN_ID=855414bd-3493-4e71-bada-a4bf4b872b26
-SIGNOZ_TRACE_ID=c5b74d8d9f7dd08f9ee32af3bf2aa8e6
+first successful run_id=8848eb4c-c23a-44fd-ab7e-f23958c4bd77
+first successful trace_id=2fed5f0ffbd62b3be751af910e89c5e0
+latest run_id=d01d1dc1-9a3a-4a8b-9892-398af55d81c4
+latest trace_id=d6d7aa09c6940b2efff3b75cee7522d1
 ```
+
+The second successful Gate 1 run replaced `.traceguard/runtime/latest_gate1.json`, and Gate 2 loaded the second run with `trace_context_source=manifest`.
 
 Relationship fixture generated:
 
 ```text
-TRACEGUARD_GATE2_FIXTURE_RUN_ID=gate2-c74e4df7-1924-4392-a238-aafe707c666a
-relationship trace_id=5b14a548f30dd545086c89fec0bfb915
-root_span_id=74efe51568e368a6
-child_span_id=078f8ca44e7bb9cd
-child_parent_span_id=74efe51568e368a6
+TRACEGUARD_GATE2_FIXTURE_RUN_ID=gate2-b777ae46-5bfa-45af-9a9b-eeaa244b87f7
+relationship trace_id=020ad9603fcc933b4769fe2c3efc8466
+root_span_id=07fb3ad378ac9998
+child_span_id=cac3067162644836
+child_parent_span_id=07fb3ad378ac9998
 ```
 
 The relationship fixture is valid two-span telemetry:
@@ -149,22 +153,43 @@ The MCP search workflow is:
 7. Confirm the normalized trace contains requested `agent.run_id` when attributes are available.
 8. Repeat the equivalent details retrieval and compare the same logical trace for stability.
 
-Actual MCP tools discovered in the latest live run: none, because `initialize` failed before `tools/list`.
+Actual trace-related MCP tools discovered in the latest live run:
 
-Actual MCP input schema summaries observed in the latest live run: none, because `tools/list` was not reached.
+- `signoz_aggregate_traces`
+- `signoz_get_trace_details`
+- `signoz_search_traces`
+
+Selected trace tools:
+
+- details: `signoz_get_trace_details`
+- search: `signoz_search_traces`
+
+Observed input schema summary:
+
+- `signoz_get_trace_details`: required `traceId`; optional `start`, `end`, `timeRange`, `includeSpans`, `searchContext`
+- `signoz_search_traces`: optional `start`, `end`, `timeRange`, `filter`, `service`, `operation`, `error`, `minDuration`, `maxDuration`, `limit`, `offset`, `searchContext`
 
 Latest MCP results:
 
-- Direct lookup: unavailable; details tool was not reached.
-- Search-to-details: unavailable; search tool was not reached.
-- Relationship retrieval: unavailable; `initialize` failed first.
+- Direct lookup: failed; trace-details tool returned no structured trace object because upstream SigNoz returned unauthenticated.
+- Search-to-details: failed; search response did not contain a supported structured result container because upstream SigNoz returned unauthenticated.
+- Relationship retrieval: not observed; trace tool calls did not return structured telemetry.
 - Stability check: unavailable; no repeated details retrieval was possible.
-- Exact failed stage: `mcp_initialize`.
-- Blocker: MCP endpoint was reachable, but `initialize` returned HTTP `401` requiring `Authorization` or `SIGNOZ-API-KEY`.
+- Exact failed stage: `mcp_search_result_parsing`.
+- Blocker: MCP endpoint was reachable and tool discovery succeeded, but SigNoz rejected upstream trace retrieval as unauthenticated.
 
 ## Run
 
 Install dependencies:
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade setuptools wheel
+.\.venv\Scripts\python.exe -m pip install -r gate1\requirements.txt -r gate2\requirements.txt
+.\.venv\Scripts\python.exe -m pip check
+```
+
+Equivalent POSIX commands:
 
 ```bash
 python3 -m pip install -r gate2/requirements.txt
@@ -196,15 +221,16 @@ python3 gate2/main.py
 echo $?
 ```
 
-Latest no-key full comparison exit code: `1`.
+Latest full comparison exit code: `1`.
 
 Latest Trace API results:
 
 - Health: `ok`.
-- Version: `v0.133.0`.
-- Direct lookup: unavailable because `SIGNOZ_API_KEY` was `<unset>`.
-- `agent.run_id` discovery: unavailable because `SIGNOZ_API_KEY` was `<unset>`.
-- Relationship retrieval: unavailable because `SIGNOZ_API_KEY` was `<unset>`.
+- Version: `v0.134.0`.
+- Trace context source: `manifest`.
+- Direct lookup: failed with `AuthenticationFailure: unauthenticated`.
+- `agent.run_id` discovery: failed with `AuthenticationFailure: unauthenticated`.
+- Relationship retrieval: not observed because authenticated Trace API retrieval failed.
 - Response classification: not observed.
 
 Exit codes:
@@ -243,7 +269,17 @@ Sanitized committed evidence lives under `gate2/evidence/`, including:
 Unit tests do not require a running SigNoz instance:
 
 ```bash
-python3 -m pytest tests/gate2 -v
+.\.venv\Scripts\python.exe -m pytest tests\runtime -v --basetemp .test-tmp-runtime -p no:cacheprovider
+.\.venv\Scripts\python.exe -m pytest tests\gate1 -v --basetemp .test-tmp-gate1 -p no:cacheprovider
+.\.venv\Scripts\python.exe -m pytest tests\gate2\test_config.py -v --basetemp .test-tmp-config -p no:cacheprovider
+.\.venv\Scripts\python.exe -m pytest tests\gate2 -v --basetemp .test-tmp-gate2 -p no:cacheprovider
+.\.venv\Scripts\python.exe -m pytest -v --basetemp .test-tmp-all -p no:cacheprovider
 ```
 
-Latest result: `86 passed`, `0 failed`, `0 skipped`.
+Latest results:
+
+- runtime: `15 passed`, `0 failed`, `0 skipped`
+- Gate 1: `7 passed`, `0 failed`, `0 skipped`
+- Gate 2 config: `26 passed`, `0 failed`, `0 skipped`
+- all Gate 2: `95 passed`, `0 failed`, `0 skipped`
+- full suite: `117 passed`, `0 failed`, `0 skipped`

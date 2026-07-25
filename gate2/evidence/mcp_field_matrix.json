@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-07-23T14:22:29+05:30",
+  "captured_at": "2026-07-25T07:12:25Z",
   "fields": {
     "complete attributes": "unavailable",
     "duration": "unavailable",
@@ -12,8 +12,8 @@
     "status": "unavailable",
     "trace_id": "unavailable"
   },
-  "reason": "No MCP tool response was available because mcp_initialize returned HTTP 401 without SIGNOZ_API_KEY.",
-  "runtime_state": "MCP /livez succeeded; initialize failed with authentication error",
+  "reason": "MCP trace details and trace search tool calls reached the server but returned upstream unauthenticated responses, so no structured trace object was normalized.",
+  "runtime_state": "MCP /livez, initialize, initialized notification, and tools/list succeeded; trace tool calls failed.",
   "sanitized": true,
   "source": "SigNoz MCP"
 }

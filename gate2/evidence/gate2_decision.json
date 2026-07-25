@@ -1,24 +1,60 @@
 {
-  "captured_at": "2026-07-23T14:22:29+05:30",
+  "captured_at": "2026-07-25T07:12:25Z",
   "decision": "HYBRID_REQUIRES_MORE_EVIDENCE",
   "exit_code_policy": {
     "0": "Both interfaces were meaningfully tested and a final evidence-based source decision was produced.",
     "1": "Trace API is unusable, authentication/configuration is invalid, or no usable source exists.",
     "2": "Trace API is provisionally usable but MCP could not be meaningfully tested because of an external blocker."
   },
-  "failed_stage": "mcp_initialize",
+  "failed_stage": "mcp_search_result_parsing",
   "full_comparison_exit_code": 1,
   "gate2_fully_complete": false,
-  "mcp_blocker": "MCP endpoint was reachable, but mcp_initialize failed: HTTP 401; Authorization or SIGNOZ-API-KEY header required.",
+  "mcp_blocker": "MCP health, initialize, initialized notification, and tools/list succeeded, but trace tool calls returned upstream unauthenticated responses from SigNoz.",
   "provisional_evaluator_source": "none",
-  "reason": "Trace API health/version succeeded, but authenticated retrieval was unavailable because SIGNOZ_API_KEY was unset. MCP /livez succeeded, but initialize returned HTTP 401 before tools/list or telemetry retrieval.",
+  "reason": "Gate 2 loaded the latest Gate 1 manifest and attempted live authenticated retrieval. SigNoz health/version succeeded, but Trace API direct lookup and agent.run_id search were rejected as unauthenticated. MCP tool discovery succeeded, but trace details/search calls also returned upstream unauthenticated responses.",
   "sanitized": true,
-  "smallest_next_action": "Set SIGNOZ_API_KEY in the ignored repository-root .env and rerun tests plus the Trace API, MCP, relationship, and full comparison probes.",
+  "smallest_next_action": "Complete local SigNoz setup and replace SIGNOZ_API_KEY with a valid service-account key for this localhost instance, then rerun python gate2/main.py.",
   "test_result": {
-    "command": "python3 -m pytest tests/gate2 -v",
-    "failed": 0,
-    "passed": 86,
-    "skipped": 0
+    "full_suite": {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -v --basetemp .test-tmp-all -p no:cacheprovider",
+      "duration_seconds": 0.72,
+      "failed": 0,
+      "passed": 117,
+      "skipped": 0,
+      "warnings": 0
+    },
+    "gate1": {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest tests\\gate1 -v --basetemp .test-tmp-gate1 -p no:cacheprovider",
+      "duration_seconds": 0.29,
+      "failed": 0,
+      "passed": 7,
+      "skipped": 0,
+      "warnings": 0
+    },
+    "gate2": {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest tests\\gate2 -v --basetemp .test-tmp-gate2 -p no:cacheprovider",
+      "duration_seconds": 0.41,
+      "failed": 0,
+      "passed": 95,
+      "skipped": 0,
+      "warnings": 0
+    },
+    "gate2_config": {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest tests\\gate2\\test_config.py -v --basetemp .test-tmp-config -p no:cacheprovider",
+      "duration_seconds": 0.24,
+      "failed": 0,
+      "passed": 26,
+      "skipped": 0,
+      "warnings": 0
+    },
+    "runtime": {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest tests\\runtime -v --basetemp .test-tmp-runtime -p no:cacheprovider",
+      "duration_seconds": 0.19,
+      "failed": 0,
+      "passed": 15,
+      "skipped": 0,
+      "warnings": 0
+    }
   },
-  "trace_api_blocker": "SIGNOZ_API_KEY was unset in the repository-root .env, so authenticated Trace API retrieval could not run."
+  "trace_api_blocker": "SIGNOZ_API_KEY was present but rejected by localhost SigNoz as unauthenticated; local SigNoz setupCompleted=false."
 }

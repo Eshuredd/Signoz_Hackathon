@@ -1,54 +1,69 @@
 {
-  "captured_at": "2026-07-23T14:22:29+05:30",
+  "captured_at": "2026-07-25T07:12:25Z",
   "configuration": {
-    "SIGNOZ_API_KEY": "<unset>",
+    "SIGNOZ_API_KEY": "<set>",
     "SIGNOZ_BASE_URL": "http://localhost:8080",
     "SIGNOZ_DEBUG": false,
     "SIGNOZ_MCP_HEALTH_URL": "http://localhost:8000/livez",
     "SIGNOZ_MCP_URL": "http://localhost:8000/mcp",
     "SIGNOZ_REQUEST_TIMEOUT_SECONDS": 10.0,
     "repository_root_dotenv_loaded": true,
-    "selected_dotenv_path": "/Users/dspl_012/Desktop/Signoz_Hackathon/.env"
+    "trace_context_source": "manifest"
   },
   "docker": {
-    "client_version": "29.4.3",
-    "compose_version": "v5.1.4",
+    "client_version": "28.4.0",
+    "compose_version": "v2.39.4-desktop.1",
     "daemon_available": true,
     "operating_system": "Docker Desktop",
-    "server_version": "29.4.3"
+    "server_version": "28.4.0"
+  },
+  "gate1_manifest": {
+    "gate": "1A",
+    "log_export_succeeded": true,
+    "manifest_path": ".traceguard/runtime/latest_gate1.json",
+    "metric_export_succeeded": true,
+    "schema_version": 1,
+    "trace_export_succeeded": true
   },
   "live_ids": {
-    "gate1a_agent_run_id": "855414bd-3493-4e71-bada-a4bf4b872b26",
-    "gate1a_trace_id": "c5b74d8d9f7dd08f9ee32af3bf2aa8e6",
-    "relationship_child_parent_span_id": "74efe51568e368a6",
-    "relationship_child_span_id": "078f8ca44e7bb9cd",
+    "gate1a_first_successful_agent_run_id": "8848eb4c-c23a-44fd-ab7e-f23958c4bd77",
+    "gate1a_first_successful_trace_id": "2fed5f0ffbd62b3be751af910e89c5e0",
+    "gate1a_latest_agent_run_id": "d01d1dc1-9a3a-4a8b-9892-398af55d81c4",
+    "gate1a_latest_trace_id": "d6d7aa09c6940b2efff3b75cee7522d1",
+    "manifest_replaced_by_second_successful_run": true,
+    "relationship_child_parent_span_id": "07fb3ad378ac9998",
+    "relationship_child_span_id": "cac3067162644836",
     "relationship_parent_link_valid_locally": true,
-    "relationship_root_span_id": "74efe51568e368a6",
-    "relationship_run_id": "gate2-c74e4df7-1924-4392-a238-aafe707c666a",
-    "relationship_trace_id": "5b14a548f30dd545086c89fec0bfb915"
+    "relationship_root_span_id": "07fb3ad378ac9998",
+    "relationship_run_id": "gate2-b777ae46-5bfa-45af-9a9b-eeaa244b87f7",
+    "relationship_trace_id": "020ad9603fcc933b4769fe2c3efc8466"
   },
+  "local_ingestion_note": "The repository compose ingester was initially replaced by OpAMP with nop pipelines because SigNoz setupCompleted=false. For Gate 1 live proof, the same collector image was run locally with the committed static collector config and without OpAMP manager config.",
   "mcp": {
     "container": "signoz-mcp",
-    "docker_health_note": "Container healthcheck invokes wget, but wget is absent in the MCP image. External /livez returned ok, so this is not classified as an MCP protocol failure.",
+    "docker_health_note": "Container healthcheck is unhealthy, but external /livez returned ok, so this is not classified as an MCP protocol failure.",
     "docker_health_status": "unhealthy",
     "health_response": "ok",
     "health_url": "http://localhost:8000/livez",
     "image": "signoz/signoz-mcp-server:latest",
-    "image_digest": "sha256:75327a2cea4ba7762e989d911edda62a126cb8d0f895b8940c7466b2e0ec514c",
-    "server_version_from_logs": "v0.9.0"
+    "server_version_from_logs": "main-f6086b3"
   },
   "sanitized": true,
   "signoz": {
     "base_url": "http://localhost:8080",
     "enterprise": "Y",
     "health": "ok",
-    "setup_completed": true,
-    "version": "v0.133.0"
+    "setup_completed": false,
+    "version": "v0.134.0"
   },
   "test_result": {
-    "command": "python3 -m pytest tests/gate2 -v",
-    "failed": 0,
-    "passed": 86,
-    "skipped": 0
+    "full_suite": {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -v --basetemp .test-tmp-all -p no:cacheprovider",
+      "duration_seconds": 0.72,
+      "failed": 0,
+      "passed": 117,
+      "skipped": 0,
+      "warnings": 0
+    }
   }
 }

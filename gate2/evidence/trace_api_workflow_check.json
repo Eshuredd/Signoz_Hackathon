@@ -1,14 +1,14 @@
 {
   "agent_run_id_search": {
-    "reason": "SIGNOZ_API_KEY was unset in the repository-root .env, so authenticated Trace API retrieval could not run.",
-    "status": "unavailable"
+    "reason": "Authenticated request returned AuthenticationFailure: unauthenticated.",
+    "status": "failed"
   },
   "authentication_required": "observed",
-  "authentication_result": "SIGNOZ_API_KEY <unset>; no secret value printed",
-  "captured_at": "2026-07-23T14:22:29+05:30",
+  "authentication_result": "SIGNOZ_API_KEY <set>; request rejected as unauthenticated; no secret value printed",
+  "captured_at": "2026-07-25T07:12:25Z",
   "direct_lookup": {
-    "reason": "SIGNOZ_API_KEY was unset in the repository-root .env, so authenticated Trace API retrieval could not run.",
-    "status": "unavailable"
+    "reason": "Authenticated request returned AuthenticationFailure: unauthenticated.",
+    "status": "failed"
   },
   "expected_custom_attributes": [
     "agent.run_id",
@@ -18,12 +18,16 @@
   ],
   "health": "ok",
   "live_ids_available": {
-    "agent_run_id": "855414bd-3493-4e71-bada-a4bf4b872b26",
-    "trace_id": "c5b74d8d9f7dd08f9ee32af3bf2aa8e6"
+    "agent_run_id": "d01d1dc1-9a3a-4a8b-9892-398af55d81c4",
+    "trace_id": "d6d7aa09c6940b2efff3b75cee7522d1"
+  },
+  "manifest_fallback": {
+    "manifest_path": ".traceguard/runtime/latest_gate1.json",
+    "trace_context_source": "manifest"
   },
   "retrieval_workflow_completeness": "not observed",
   "sanitized": true,
-  "smallest_next_action": "Set SIGNOZ_API_KEY in the ignored repository-root .env and rerun python3 gate2/signoz_api_client.py.",
+  "smallest_next_action": "Complete local SigNoz setup and replace SIGNOZ_API_KEY with a valid service-account key for this localhost instance, then rerun python gate2/signoz_api_client.py.",
   "source": "SigNoz Trace API",
-  "version": "v0.133.0"
+  "version": "v0.134.0"
 }

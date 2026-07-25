@@ -1,13 +1,12 @@
 {
-  "captured_at": "2026-07-23T14:22:29+05:30",
+  "captured_at": "2026-07-25T07:12:25Z",
   "initialize": {
-    "error": "HTTP 401: Authorization or SIGNOZ-API-KEY header required",
-    "failed_stage": "mcp_initialize",
-    "session_id_issued": "not observed",
-    "status": "failed"
+    "failed_stage": null,
+    "session_id_issued": false,
+    "status": "succeeded"
   },
   "mcp_health": "ok",
-  "mcp_server_version": "v0.9.0",
+  "mcp_server_version": "main-f6086b3",
   "sanitized": true,
   "tool_selection_policy": {
     "preferred_details_tool": "signoz_get_trace_details",
@@ -15,11 +14,85 @@
     "undocumented_aliases_allowed": false
   },
   "tools_list": {
-    "actual_tool_names": [],
-    "input_schema_summaries": [],
-    "reason": "tools/list cannot be called until initialize succeeds",
-    "selected_trace_details_tool": null,
-    "selected_trace_search_tool": null,
-    "status": "not observed"
+    "actual_tool_names": [
+      "signoz_aggregate_logs",
+      "signoz_aggregate_traces",
+      "signoz_check_metric_cardinality",
+      "signoz_check_metric_usage",
+      "signoz_create_alert",
+      "signoz_create_dashboard",
+      "signoz_create_notification_channel",
+      "signoz_create_view",
+      "signoz_delete_alert",
+      "signoz_delete_dashboard",
+      "signoz_delete_notification_channel",
+      "signoz_delete_view",
+      "signoz_execute_builder_query",
+      "signoz_fetch_doc",
+      "signoz_get_alert",
+      "signoz_get_alert_history",
+      "signoz_get_dashboard",
+      "signoz_get_field_keys",
+      "signoz_get_field_values",
+      "signoz_get_notification_channel",
+      "signoz_get_service_top_operations",
+      "signoz_get_top_metrics",
+      "signoz_get_trace_details",
+      "signoz_get_view",
+      "signoz_import_dashboard",
+      "signoz_list_alert_rules",
+      "signoz_list_alerts",
+      "signoz_list_dashboard_templates",
+      "signoz_list_dashboards",
+      "signoz_list_metrics",
+      "signoz_list_notification_channels",
+      "signoz_list_services",
+      "signoz_list_views",
+      "signoz_query_metrics",
+      "signoz_search_docs",
+      "signoz_search_logs",
+      "signoz_search_traces",
+      "signoz_update_alert",
+      "signoz_update_dashboard",
+      "signoz_update_notification_channel",
+      "signoz_update_view"
+    ],
+    "input_schema_summaries": [
+      {
+        "name": "signoz_get_trace_details",
+        "property_names": [
+          "end",
+          "includeSpans",
+          "searchContext",
+          "start",
+          "timeRange",
+          "traceId"
+        ],
+        "required": [
+          "traceId"
+        ]
+      },
+      {
+        "name": "signoz_search_traces",
+        "property_names": [
+          "end",
+          "error",
+          "filter",
+          "limit",
+          "maxDuration",
+          "minDuration",
+          "offset",
+          "operation",
+          "searchContext",
+          "service",
+          "start",
+          "timeRange"
+        ],
+        "required": []
+      }
+    ],
+    "selected_trace_details_tool": "signoz_get_trace_details",
+    "selected_trace_search_tool": "signoz_search_traces",
+    "status": "observed"
   }
 }

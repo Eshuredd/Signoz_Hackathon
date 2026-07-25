@@ -1,6 +1,6 @@
 {
-  "basis": "Gate 2 model/client deterministic assessment rules plus latest no-key live run",
-  "captured_at": "2026-07-23T14:22:29+05:30",
+  "basis": "Live authenticated Trace API attempt on 2026-07-25 using Gate 2 manifest fallback",
+  "captured_at": "2026-07-25T07:12:25Z",
   "deterministic_evaluation": "not observed",
   "expected_gate1a_attributes": [
     "agent.run_id",
@@ -9,20 +9,20 @@
     "traceguard.gate"
   ],
   "fields": {
-    "complete attributes": "unavailable from this authenticated API run",
-    "duration": "unavailable from this authenticated API run",
-    "end_time": "unavailable from this authenticated API run",
-    "parent_span_id": "unavailable from this authenticated API run",
-    "resource attributes": "unavailable from this authenticated API run",
-    "span_id": "unavailable from this authenticated API run",
-    "span_name": "unavailable from this authenticated API run",
-    "start_time": "unavailable from this authenticated API run",
-    "status": "unavailable from this authenticated API run",
-    "trace_id": "unavailable from this authenticated API run"
+    "complete attributes": "unavailable from this API run",
+    "duration": "unavailable from this API run",
+    "end_time": "unavailable from this API run",
+    "parent_span_id": "unavailable from this API run",
+    "resource attributes": "unavailable from this API run",
+    "span_id": "unavailable from this API run",
+    "span_name": "unavailable from this API run",
+    "start_time": "unavailable from this API run",
+    "status": "unavailable from this API run",
+    "trace_id": "unavailable from this API run"
   },
-  "reason": "SIGNOZ_API_KEY was unset in the repository-root .env, so authenticated Trace API retrieval could not run.",
+  "reason": "The API key was present but local SigNoz rejected direct trace lookup and agent.run_id search as unauthenticated.",
   "response_classification": "not observed",
-  "runtime_state": "health and version observed; authenticated trace retrieval unavailable because SIGNOZ_API_KEY was unset",
+  "runtime_state": "health/version observed; manifest IDs loaded; authenticated trace retrieval failed",
   "sanitized": true,
   "source": "SigNoz Trace API"
 }

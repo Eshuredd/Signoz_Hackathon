@@ -1,17 +1,17 @@
 {
-  "captured_at": "2026-07-23T14:22:29+05:30",
+  "captured_at": "2026-07-25T07:12:25Z",
   "fixture": {
-    "child_parent_span_id": "74efe51568e368a6",
-    "child_span_id": "078f8ca44e7bb9cd",
+    "child_parent_span_id": "07fb3ad378ac9998",
+    "child_span_id": "cac3067162644836",
     "local_parent_link_valid": true,
-    "root_span_id": "74efe51568e368a6",
-    "run_id": "gate2-c74e4df7-1924-4392-a238-aafe707c666a",
-    "trace_id": "5b14a548f30dd545086c89fec0bfb915"
+    "root_span_id": "07fb3ad378ac9998",
+    "run_id": "gate2-b777ae46-5bfa-45af-9a9b-eeaa244b87f7",
+    "trace_id": "020ad9603fcc933b4769fe2c3efc8466"
   },
   "mcp_relationship_result": {
     "preserves_multiple_spans": "not observed",
     "preserves_parent_child": "not observed",
-    "reason": "MCP initialize failed before tools/list or trace retrieval.",
+    "reason": "MCP trace tool calls returned upstream unauthenticated responses before structured trace retrieval.",
     "required_fields": "not observed",
     "retrieved_from_signoz": false,
     "root_and_child_spans_returned": "not observed",
