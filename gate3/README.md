@@ -23,7 +23,7 @@ Gate 3A consumes a versioned envelope:
 }
 ```
 
-Malformed JSON or schema-invalid envelopes raise `TraceInputError`. That is not the same as incomplete telemetry. A valid trace with missing span fields can produce `WARN` or `BLOCK` findings; malformed input is rejected before evaluation so it is not disguised as a telemetry verdict.
+Malformed JSON or schema-invalid envelopes raise `TraceInputError`. That is not the same as incomplete telemetry. A valid trace with missing span fields can produce `WARN` or `BLOCK` findings; malformed input is rejected before evaluation so it is not disguised as a telemetry verdict. `duration_nano` must be a real JSON integer; booleans, floats, and numeric-looking strings are rejected rather than coerced.
 
 ## Verdicts
 
@@ -65,7 +65,7 @@ The committed fixture corpus is synthetic and non-secret:
 - `fixtures/warn`: traces expected to warn only.
 - `fixtures/block`: traces expected to block, including one block-plus-warning precedence case.
 
-Independent expected results live in `expected/fixture_expectations.json`. Tests verify that every fixture has one expectation, every expectation references an existing fixture, expected rule IDs exist, and all results match.
+Independent expected results live in `expected/fixture_expectations.json`. The manifest is loaded with strict JSON object-key validation, so duplicate fixture paths or repeated nested keys are rejected before validation. Tests verify that every fixture has one expectation, every expectation references an existing fixture, expected rule IDs exist, rule ID lists contain no duplicates, and all results match.
 
 ## CLI
 
@@ -101,4 +101,4 @@ Gate 3A tests are offline and do not require SigNoz:
 .\.venv\Scripts\python.exe gate3\cli.py evaluate-all gate3\fixtures
 ```
 
-No live Trace API retrieval, MCP retrieval, `.env` loading, or network access is part of Gate 3A.
+No live Trace API retrieval, MCP retrieval, `.env` loading, or network access is part of Gate 3A. Tests scan production Gate 3A modules for forbidden network imports and execute CLI workflows while socket access is denied.

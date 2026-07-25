@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from .models import NormalizedTrace, Span
+    from .models import NormalizedTrace, Span, is_valid_integer
 except ImportError:  # pragma: no cover - supports direct script imports.
-    from models import NormalizedTrace, Span
+    from models import NormalizedTrace, Span, is_valid_integer
 
 
 SUPPORTED_SCHEMA_VERSIONS = {1}
@@ -90,8 +90,9 @@ def _validate_span(span: dict[str, Any], index: int) -> None:
     for field in ("start_time", "end_time"):
         if field in span and span[field] is not None:
             _parse_timestamp(f"trace.spans[{index}].{field}", span[field])
-    if "duration_nano" in span and span["duration_nano"] is not None and not isinstance(span["duration_nano"], int):
-        raise TraceInputError(f"trace.spans[{index}].duration_nano must be an integer when present.")
+    if "duration_nano" in span and span["duration_nano"] is not None:
+        if not is_valid_integer(span["duration_nano"]):
+            raise TraceInputError(f"trace.spans[{index}].duration_nano must be an integer when present.")
 
 
 def _require_string(path: str, value: Any) -> None:

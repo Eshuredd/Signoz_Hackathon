@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from gate3.cli import EXPECTATION_PATH, load_expectations
+from gate3.cli import EXPECTATION_PATH, ExpectationError, load_expectations
 from gate3.evaluator import evaluate_trace
 from gate3.models import equivalent_results
 from gate3.rules import RULE_BY_ID
@@ -43,3 +43,112 @@ def test_each_fixture_matches_its_independent_expectation(rel_path: str) -> None
 
     assert result.verdict.value == expectations[rel_path]["verdict"]
     assert sorted({finding.rule_id for finding in result.findings}) == expectations[rel_path]["rule_ids"]
+
+
+def write_manifest(path: Path, content: str) -> Path:
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+def one_fixture_dir(tmp_path: Path) -> Path:
+    fixtures_dir = tmp_path / "fixtures"
+    fixture_dir = fixtures_dir / "valid"
+    fixture_dir.mkdir(parents=True)
+    (fixture_dir / "valid_single_span.json").write_text("{}", encoding="utf-8")
+    return fixtures_dir
+
+
+@pytest.mark.parametrize(
+    "manifest_text,match",
+    [
+        (
+            """
+            {
+              "schema_version": 1,
+              "schema_version": 1,
+              "fixtures": {}
+            }
+            """,
+            "schema_version",
+        ),
+        (
+            """
+            {
+              "schema_version": 1,
+              "fixtures": {
+                "valid/valid_single_span.json": {"verdict": "PASS", "rule_ids": []},
+                "valid/valid_single_span.json": {"verdict": "BLOCK", "rule_ids": ["TG-TEL-001"]}
+              }
+            }
+            """,
+            "valid/valid_single_span.json",
+        ),
+        (
+            """
+            {
+              "schema_version": 1,
+              "fixtures": {
+                "valid/valid_single_span.json": {
+                  "verdict": "PASS",
+                  "verdict": "BLOCK",
+                  "rule_ids": []
+                }
+              }
+            }
+            """,
+            "verdict",
+        ),
+        (
+            """
+            {
+              "schema_version": 1,
+              "fixtures": {
+                "valid/valid_single_span.json": {
+                  "verdict": "PASS",
+                  "rule_ids": [],
+                  "rule_ids": ["TG-TEL-001"]
+                }
+              }
+            }
+            """,
+            "rule_ids",
+        ),
+    ],
+)
+def test_expectation_manifest_rejects_duplicate_json_object_keys(
+    tmp_path: Path,
+    manifest_text: str,
+    match: str,
+) -> None:
+    fixtures_dir = one_fixture_dir(tmp_path)
+    manifest_path = write_manifest(tmp_path / "expectations.json", manifest_text)
+
+    with pytest.raises(ExpectationError, match=match):
+        load_expectations(fixtures_dir, manifest_path)
+
+
+def test_expectation_manifest_rejects_duplicate_rule_id_values(tmp_path: Path) -> None:
+    fixtures_dir = one_fixture_dir(tmp_path)
+    manifest_path = write_manifest(
+        tmp_path / "expectations.json",
+        """
+        {
+          "schema_version": 1,
+          "fixtures": {
+            "valid/valid_single_span.json": {
+              "verdict": "BLOCK",
+              "rule_ids": ["TG-TEL-001", "TG-TEL-001"]
+            }
+          }
+        }
+        """,
+    )
+
+    with pytest.raises(ExpectationError, match="duplicate rule IDs"):
+        load_expectations(fixtures_dir, manifest_path)
+
+
+def test_normal_expectation_manifest_still_loads() -> None:
+    expectations = load_expectations(FIXTURES_DIR, EXPECTATION_PATH)
+
+    assert expectations["valid/valid_single_span.json"] == {"verdict": "PASS", "rule_ids": []}

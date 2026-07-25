@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+from gate3.models import NormalizedTrace, Span
 from gate3.rules import RULE_BY_ID
 from gate3.trace_loader import load_trace_payload
 
@@ -82,6 +83,34 @@ def test_tg_tel_007_detects_missing_timing_fields() -> None:
 def test_tg_tel_008_detects_invalid_timing() -> None:
     assert findings("TG-TEL-008", payload({"duration_nano": -1}))
     assert findings("TG-TEL-008", payload({"start_time": "2026-07-25T08:00:02Z", "end_time": "2026-07-25T08:00:01Z"}))
+
+
+def test_tg_tel_008_does_not_treat_boolean_duration_as_integer() -> None:
+    trace = NormalizedTrace(
+        schema_version=1,
+        trace_id=TRACE_ID,
+        spans=(
+            Span(
+                raw={
+                    "trace_id": TRACE_ID,
+                    "span_id": "1111111111111111",
+                    "parent_span_id": None,
+                    "span_name": "agent.run",
+                    "start_time": "2026-07-25T08:00:00Z",
+                    "end_time": "2026-07-25T08:00:01Z",
+                    "duration_nano": False,
+                    "attributes": {},
+                    "resource_attributes": {},
+                    "status": {},
+                },
+                index=0,
+            ),
+        ),
+        retrieved_at=None,
+        source="fixture",
+    )
+
+    assert RULE_BY_ID["TG-TEL-008"].evaluate(trace) == []
 
 
 def test_tg_tel_009_detects_missing_service_and_accepts_resource_service() -> None:

@@ -26,6 +26,21 @@ class ExpectationError(Exception):
     """Raised when fixture expectations are invalid."""
 
 
+class DuplicateJSONKeyError(ValueError):
+    """Raised while decoding JSON that repeats an object key."""
+
+
+def reject_duplicate_object_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    seen: set[str] = set()
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in seen:
+            raise DuplicateJSONKeyError(f"Duplicate JSON object key in expectation manifest: {key}")
+        seen.add(key)
+        result[key] = value
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Gate 3A deterministic telemetry evaluator")
     parser.add_argument("--debug", action="store_true", help="show stack traces for programming defects")
@@ -110,9 +125,14 @@ def _validate_fixtures(fixtures_dir: Path, expectations_path: Path) -> int:
 
 def load_expectations(fixtures_dir: Path, expectations_path: Path) -> dict[str, dict[str, Any]]:
     try:
-        payload = json.loads(expectations_path.read_text(encoding="utf-8"))
+        payload = json.loads(
+            expectations_path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_object_keys,
+        )
     except OSError as exc:
         raise ExpectationError(f"Unable to read expectation manifest: {expectations_path}") from exc
+    except DuplicateJSONKeyError as exc:
+        raise ExpectationError(str(exc)) from exc
     except json.JSONDecodeError as exc:
         raise ExpectationError(f"Invalid JSON in expectation manifest: {expectations_path}") from exc
     if not isinstance(payload, dict) or payload.get("schema_version") != 1:
@@ -144,6 +164,8 @@ def load_expectations(fixtures_dir: Path, expectations_path: Path) -> dict[str, 
             raise ExpectationError(f"Expectation for {rel_path} has invalid verdict.")
         if not isinstance(rule_ids, list) or any(not isinstance(item, str) for item in rule_ids):
             raise ExpectationError(f"Expectation for {rel_path} must contain a rule_ids string list.")
+        if len(rule_ids) != len(set(rule_ids)):
+            raise ExpectationError(f"Expectation for {rel_path} contains duplicate rule IDs.")
         if rule_ids != sorted(rule_ids):
             raise ExpectationError(f"Expectation rule_ids for {rel_path} must be sorted.")
         unknown = sorted(set(rule_ids) - set(RULE_BY_ID))

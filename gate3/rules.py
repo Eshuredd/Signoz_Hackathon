@@ -5,9 +5,9 @@ from datetime import datetime
 from typing import Callable
 
 try:
-    from .models import NormalizedTrace, RuleFinding, Severity, Span
+    from .models import NormalizedTrace, RuleFinding, Severity, Span, is_valid_integer
 except ImportError:  # pragma: no cover
-    from models import NormalizedTrace, RuleFinding, Severity, Span
+    from models import NormalizedTrace, RuleFinding, Severity, Span, is_valid_integer
 
 
 RuleFunction = Callable[[NormalizedTrace], list[RuleFinding]]
@@ -203,7 +203,7 @@ def tg_tel_008(trace: NormalizedTrace) -> list[RuleFinding]:
     findings: list[RuleFinding] = []
     for span in trace.spans:
         duration = span.get("duration_nano")
-        if isinstance(duration, int) and duration < 0:
+        if is_valid_integer(duration) and duration < 0:
             findings.append(
                 finding(
                     rule,

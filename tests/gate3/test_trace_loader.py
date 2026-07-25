@@ -40,7 +40,6 @@ def test_invalid_json_fails_clearly(tmp_path: Path) -> None:
         ({"schema_version": 1, "trace": {"spans": {}}}, "spans must be a list"),
         ({"schema_version": 1, "trace": {"spans": [1]}}, "must be an object"),
         ({"schema_version": 1, "trace": {"spans": [{"start_time": "nope"}]}}, "valid ISO-8601"),
-        ({"schema_version": 1, "trace": {"spans": [{"duration_nano": "1"}]}}, "integer"),
         ({"schema_version": 1, "trace": {"spans": [{"attributes": []}]}}, "attributes must be an object"),
         ({"schema_version": 1, "trace": {"spans": [{"status": []}]}}, "status must be an object"),
         ({"schema_version": 1, "trace": {"spans": [{"span_id": 1}]}}, "span_id must be a string"),
@@ -57,3 +56,35 @@ def test_non_object_span_from_file_fails(tmp_path: Path) -> None:
 
     with pytest.raises(TraceInputError, match="spans\\[0\\]"):
         load_trace_file(path)
+
+
+@pytest.mark.parametrize("duration", [True, False, 1.5, "1000"])
+def test_duration_nano_rejects_bool_float_and_string_values(duration: object) -> None:
+    payload = {
+        "schema_version": 1,
+        "trace": {
+            "trace_id": "a" * 32,
+            "spans": [{"duration_nano": duration}],
+            "source": "fixture",
+            "metadata": {},
+        },
+    }
+
+    with pytest.raises(TraceInputError, match="duration_nano must be an integer"):
+        load_trace_payload(payload)
+
+
+def test_duration_nano_accepts_valid_integer_zero() -> None:
+    trace = load_trace_payload(
+        {
+            "schema_version": 1,
+            "trace": {
+                "trace_id": "a" * 32,
+                "spans": [{"duration_nano": 0}],
+                "source": "fixture",
+                "metadata": {},
+            },
+        }
+    )
+
+    assert trace.spans[0].get("duration_nano") == 0

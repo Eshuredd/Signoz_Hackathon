@@ -161,6 +161,10 @@ def stable_value(value: Any) -> Any:
     return value
 
 
+def is_valid_integer(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def verdict_from_findings(findings: list[RuleFinding] | tuple[RuleFinding, ...]) -> Verdict:
     if any(finding.severity == Severity.BLOCKING for finding in findings):
         return Verdict.BLOCK
