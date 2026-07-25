@@ -10,7 +10,7 @@ from gate3.models import (
     SUPPORTED_RUN_BUNDLE_SCHEMA_VERSION,
     SUPPORTED_TRACE_INPUT_SCHEMA_VERSION,
 )
-from gate3.trace_loader import RunBundleInputError, TraceInputError, load_run_bundle_payload, load_trace_file, load_trace_payload
+from gate3.trace_loader import RunBundleInputError, TraceInputError, load_run_bundle_file, load_run_bundle_payload, load_trace_file, load_trace_payload
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -71,6 +71,25 @@ def test_run_bundle_loader_and_schema_errors() -> None:
         load_run_bundle_payload({"schema_version": True, "agent_run_id": "run-1", "traces": []})
     with pytest.raises(RunBundleInputError, match="Unsupported run bundle schema_version"):
         load_run_bundle_payload({"schema_version": 2, "agent_run_id": "run-1", "traces": []})
+
+
+def test_run_bundle_requires_at_least_one_trace() -> None:
+    with pytest.raises(RunBundleInputError, match="traces must be a list"):
+        load_run_bundle_payload({"schema_version": 1, "agent_run_id": "run-1", "logs": []})
+    with pytest.raises(RunBundleInputError, match="traces must be a list"):
+        load_run_bundle_payload({"schema_version": 1, "agent_run_id": "run-1", "traces": {}, "logs": []})
+    with pytest.raises(RunBundleInputError, match="at least one trace"):
+        load_run_bundle_payload({"schema_version": 1, "agent_run_id": "run-1", "traces": [], "logs": []})
+
+
+def test_run_bundle_file_json_errors_use_run_bundle_error(tmp_path: Path) -> None:
+    missing = tmp_path / "missing-run.json"
+    with pytest.raises(RunBundleInputError, match="Unable to read"):
+        load_run_bundle_file(missing)
+    bad = tmp_path / "bad-run.json"
+    bad.write_text("{bad", encoding="utf-8")
+    with pytest.raises(RunBundleInputError, match="Invalid JSON"):
+        load_run_bundle_file(bad)
 
 
 def test_non_object_span_from_file_fails(tmp_path: Path) -> None:

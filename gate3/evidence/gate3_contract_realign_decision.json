@@ -10,17 +10,17 @@
     "TG-TEL-007",
     "TG-TEL-008"
   ],
-  "captured_at": "2026-07-25T15:14:19.327043Z",
+  "captured_at": "2026-07-25T15:58:34Z",
   "contract_realign_complete": false,
   "corrected_ruleset_version": "traceguard-telemetry-v2",
   "explicit_per_rule_results": true,
   "fixture_count": 24,
   "fixture_migration_complete": true,
   "live_preflight": {
-    "blocker": "SigNoz Trace API and OTLP collector endpoints refused connections; retrieval and attribute preservation not proven.",
-    "exit_code": 1,
-    "incomplete_trace_id": "6afc56584a772321c62410a4ba4325e2",
-    "valid_trace_id": "a6d8ed7fb1b7ae6063bcf1d363664516"
+    "blocker": "Docker Desktop engine pipe was unavailable and SigNoz health/version endpoints refused connections; live preflight exited before OTLP export.",
+    "exit_code": 3,
+    "incomplete_trace_id": null,
+    "valid_trace_id": null
   },
   "next_action": "Restore local SigNoz and OTLP collector availability, rerun gate3_preflight/main.py, and only then mark contract realignment complete.",
   "previous_ruleset_version": "tg-tel-v1",
@@ -37,11 +37,11 @@
   "test_results": {
     "compileall": "passed",
     "evaluate_all": "passed",
-    "full_suite": "173 passed",
+    "full_suite": "183 passed",
     "gate1": "7 passed",
     "gate2": "102 passed",
-    "gate3": "45 passed",
-    "gate3_preflight_offline": "4 passed",
+    "gate3": "50 passed",
+    "gate3_preflight_offline": "9 passed",
     "pip_check": "passed",
     "runtime": "15 passed",
     "validate_fixtures": "passed"

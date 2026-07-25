@@ -45,6 +45,14 @@ def test_invalid_input_returns_2(tmp_path: Path) -> None:
     assert json.loads(completed.stdout)["error_type"] == "TraceInputError"
 
 
+def test_empty_run_bundle_cli_returns_2(tmp_path: Path) -> None:
+    path = tmp_path / "empty-run.json"
+    path.write_text(json.dumps({"schema_version": 1, "agent_run_id": "run-1", "traces": [], "logs": []}), encoding="utf-8")
+    completed = run_cli("evaluate-run", str(path))
+    assert completed.returncode == 2
+    assert json.loads(completed.stdout)["error_type"] == "RunBundleInputError"
+
+
 def test_evaluate_all_validate_and_list_rules() -> None:
     evaluate_all = run_cli("evaluate-all")
     validate = run_cli("validate-fixtures")
@@ -72,6 +80,16 @@ def test_manifest_schema_version_type_errors(schema_version_json: str, tmp_path:
     manifest.write_text(f'{{"schema_version":{schema_version_json},"fixtures":{{}}}}', encoding="utf-8")
     with pytest.raises(cli.ExpectationError, match="schema_version must be an integer"):
         cli.load_expectations(REPO_ROOT / "gate3" / "fixtures" / "trace", manifest)
+
+
+def test_expectation_verdict_must_match_rule_statuses() -> None:
+    statuses = {rule.rule_id: "PASSED" for rule in cli.RULES}
+    assert cli.verdict_from_expected_statuses(statuses) == "PASS"
+    statuses["TG-TEL-002"] = "FAILED"
+    assert cli.verdict_from_expected_statuses(statuses) == "BLOCK"
+    statuses["TG-TEL-002"] = "PASSED"
+    statuses["TG-TEL-006"] = "FAILED"
+    assert cli.verdict_from_expected_statuses(statuses) == "PASS_WITH_WARNINGS"
 
 
 def test_gate3_production_code_has_no_forbidden_network_imports() -> None:

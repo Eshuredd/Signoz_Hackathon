@@ -39,11 +39,11 @@ class RunBundleInputError(Exception):
 
 
 def load_trace_file(path: str | Path) -> NormalizedTrace:
-    return load_trace_payload(_read_json(Path(path), "trace input"))
+    return load_trace_payload(_read_json(Path(path), "trace input", TraceInputError))
 
 
 def load_run_bundle_file(path: str | Path) -> RunBundle:
-    return load_run_bundle_payload(_read_json(Path(path), "run bundle input"))
+    return load_run_bundle_payload(_read_json(Path(path), "run bundle input", RunBundleInputError))
 
 
 def load_trace_payload(payload: Any) -> NormalizedTrace:
@@ -74,6 +74,8 @@ def load_run_bundle_payload(payload: Any) -> RunBundle:
     traces_payload = payload.get("traces")
     if not isinstance(traces_payload, list):
         raise RunBundleInputError("Run bundle traces must be a list.")
+    if not traces_payload:
+        raise RunBundleInputError("Run bundle traces must contain at least one trace.")
     traces: list[NormalizedTrace] = []
     for index, item in enumerate(traces_payload):
         try:
@@ -90,15 +92,15 @@ def load_run_bundle_payload(payload: Any) -> RunBundle:
     return RunBundle(schema_version=schema_version, agent_run_id=agent_run_id, traces=tuple(traces), logs=logs, metadata=metadata)
 
 
-def _read_json(path: Path, label: str) -> Any:
+def _read_json(path: Path, label: str, error_cls: type[Exception]) -> Any:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        raise TraceInputError(f"Unable to read {label}: {path}") from exc
+        raise error_cls(f"Unable to read {label}: {path}") from exc
     try:
         return json.loads(text)
     except json.JSONDecodeError as exc:
-        raise TraceInputError(f"Invalid JSON in {label}: {path}") from exc
+        raise error_cls(f"Invalid JSON in {label}: {path}") from exc
 
 
 def _load_trace_object(schema_version: int, trace: dict[str, Any], *, error_cls: type[Exception]) -> NormalizedTrace:

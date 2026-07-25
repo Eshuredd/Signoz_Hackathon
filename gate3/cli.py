@@ -9,12 +9,12 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from gate3.evaluator import EvaluatorInternalError, evaluate_run_bundle, evaluate_trace
-    from gate3.models import SUPPORTED_EXPECTATION_SCHEMA_VERSION, RuleStatus, Verdict, is_valid_integer
+    from gate3.models import SUPPORTED_EXPECTATION_SCHEMA_VERSION, RuleStatus, Verdict, is_valid_integer, verdict_from_rule_results
     from gate3.rules import RULES, RULE_BY_ID
     from gate3.trace_loader import RunBundleInputError, TraceInputError, load_run_bundle_file, load_trace_file
 else:
     from .evaluator import EvaluatorInternalError, evaluate_run_bundle, evaluate_trace
-    from .models import SUPPORTED_EXPECTATION_SCHEMA_VERSION, RuleStatus, Verdict, is_valid_integer
+    from .models import SUPPORTED_EXPECTATION_SCHEMA_VERSION, RuleStatus, Verdict, is_valid_integer, verdict_from_rule_results
     from .rules import RULES, RULE_BY_ID
     from .trace_loader import RunBundleInputError, TraceInputError, load_run_bundle_file, load_trace_file
 
@@ -178,8 +178,19 @@ def load_expectations(fixtures_dir: Path, expectations_path: Path) -> dict[str, 
         invalid = sorted(key for key, value in rule_statuses.items() if value not in {item.value for item in RuleStatus})
         if invalid:
             raise ExpectationError(f"Expectation for {rel_path} has invalid status for rule ID(s): {', '.join(invalid)}")
+        implied_verdict = verdict_from_expected_statuses(rule_statuses)
+        if implied_verdict != verdict:
+            raise ExpectationError(f"Expectation for {rel_path} declares {verdict} but rule statuses imply {implied_verdict}.")
         normalized[rel_path] = {"verdict": verdict, "rule_statuses": {key: rule_statuses[key] for key in sorted(rule_statuses)}}
     return normalized
+
+
+def verdict_from_expected_statuses(rule_statuses: dict[str, str]) -> str:
+    synthetic = [
+        RULE_BY_ID[rule_id].result(RuleStatus(status), "", observed={})
+        for rule_id, status in rule_statuses.items()
+    ]
+    return verdict_from_rule_results(synthetic).value
 
 
 def actual_expectation(result: dict[str, Any]) -> dict[str, Any]:

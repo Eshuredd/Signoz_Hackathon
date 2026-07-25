@@ -246,14 +246,54 @@ def tg_tel_003b(target: NormalizedTrace | RunBundle) -> RuleResult:
     rule = RULE_BY_ID["TG-TEL-003B"]
     if isinstance(target, NormalizedTrace):
         return rule.result(RuleStatus.NOT_APPLICABLE, "Run-level trace collection was not supplied.", observed={"trace_ids": [target.trace_id]}, evidence={"reason": "Run-level trace collection was not supplied."}, affected_trace_ids=(target.trace_id,))
-    trace_ids = trace_ids_for_bundle(target)
-    status = RuleStatus.PASSED if len(trace_ids) <= 1 else RuleStatus.FAILED
+    expected_run_id = target.agent_run_id
+    matching_trace_ids: set[str] = set()
+    matching_trace_count = 0
+    foreign_trace_ids: set[str] = set()
+    foreign_agent_run_ids: set[str] = set()
+    traces_missing_run_id: list[str] = []
+    traces_with_ambiguous_agent_root: list[str] = []
+    for trace in target.traces:
+        roots = agent_roots(trace)
+        if len(roots) != 1 or len(root_spans(trace)) != 1:
+            traces_with_ambiguous_agent_root.append(trace.trace_id)
+            continue
+        run_id = roots[0].attributes.get("agent.run_id")
+        if not isinstance(run_id, str) or not run_id.strip():
+            traces_missing_run_id.append(trace.trace_id)
+            continue
+        if run_id == expected_run_id:
+            matching_trace_count += 1
+            if trace.trace_id:
+                matching_trace_ids.add(trace.trace_id)
+        else:
+            if trace.trace_id:
+                foreign_trace_ids.add(trace.trace_id)
+            foreign_agent_run_ids.add(run_id)
+    evidence = {
+        "expected_agent_run_id": expected_run_id,
+        "matching_trace_ids": tuple(sorted(matching_trace_ids)),
+        "matching_trace_count": matching_trace_count,
+        "foreign_trace_ids": tuple(sorted(foreign_trace_ids)),
+        "foreign_agent_run_ids": tuple(sorted(foreign_agent_run_ids)),
+        "traces_missing_run_id": tuple(sorted(traces_missing_run_id)),
+        "traces_with_ambiguous_agent_root": tuple(sorted(traces_with_ambiguous_agent_root)),
+        "expected_unique_trace_count": 1,
+    }
+    failures: list[str] = []
+    if matching_trace_count == 0:
+        failures.append("no_matching_run_trace")
+    if len(matching_trace_ids) != 1:
+        failures.append("matching_run_fragmented")
+    if foreign_trace_ids:
+        failures.append("foreign_run_trace_supplied")
+    status = RuleStatus.PASSED if not failures else RuleStatus.FAILED
     return rule.result(
         status,
-        "Agent run is contained in one trace." if status == RuleStatus.PASSED else "Agent run is fragmented across multiple traces.",
-        observed={"agent_run_id": target.agent_run_id, "observed_trace_ids": trace_ids, "observed_trace_count": len(trace_ids)},
-        evidence={"agent_run_id": target.agent_run_id, "observed_trace_ids": trace_ids, "observed_trace_count": len(trace_ids), "expected_maximum_trace_count": 1},
-        affected_trace_ids=trace_ids if status == RuleStatus.FAILED else (),
+        "Agent run is contained in one trace." if status == RuleStatus.PASSED else "Run bundle traces do not all belong to one matching agent.run_id trace.",
+        observed={**evidence, "failures": tuple(failures)},
+        evidence={**evidence, "failures": tuple(failures)},
+        affected_trace_ids=tuple(sorted((matching_trace_ids | foreign_trace_ids) if status == RuleStatus.FAILED else set())),
     )
 
 

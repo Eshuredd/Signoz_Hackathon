@@ -43,6 +43,16 @@ def trace(spans: list[dict[str, object]]) -> object:
     return load_trace_payload({"schema_version": 1, "trace": {"trace_id": TRACE_ID, "spans": spans, "source": "fixture", "metadata": {}}})
 
 
+def trace_payload(trace_id: str, run_id: str) -> dict[str, object]:
+    root_span = deepcopy(root({"agent.run_id": run_id, "agent.name": "agent", "agent.status": "ok"}))
+    root_span["trace_id"] = trace_id
+    tool_span = deepcopy(tool())
+    tool_span["trace_id"] = trace_id
+    model_span = deepcopy(model())
+    model_span["trace_id"] = trace_id
+    return {"schema_version": 1, "trace": {"trace_id": trace_id, "spans": [root_span, tool_span, model_span], "source": "fixture", "metadata": {}}}
+
+
 def status(result: object, rule_id: str) -> RuleStatus:
     return {item.rule_id: item.status for item in result.rule_results}[rule_id]  # type: ignore[attr-defined]
 
@@ -90,6 +100,27 @@ def test_run_level_rules_and_logs() -> None:
     assert status(result, "TG-TEL-008") == RuleStatus.PASSED
     bad = load_run_bundle_payload({"schema_version": 1, "agent_run_id": "run-1", "traces": [t], "logs": [{"trace_id": "b" * 32, "attributes": {"agent.run_id": "run-1"}}]})
     assert evaluate_run_bundle(bad).verdict == Verdict.PASS_WITH_WARNINGS
+
+
+def test_tg_tel_003b_uses_bundle_agent_run_id_membership() -> None:
+    matching = trace_payload("a" * 32, "run-1")
+    other_matching = trace_payload("b" * 32, "run-1")
+    foreign = trace_payload("c" * 32, "run-2")
+
+    assert status(evaluate_run_bundle(load_run_bundle_payload({"schema_version": 1, "agent_run_id": "run-1", "traces": [matching], "logs": []})), "TG-TEL-003B") == RuleStatus.PASSED
+    assert status(evaluate_run_bundle(load_run_bundle_payload({"schema_version": 1, "agent_run_id": "run-1", "traces": [matching, other_matching], "logs": []})), "TG-TEL-003B") == RuleStatus.FAILED
+
+    foreign_result = evaluate_run_bundle(load_run_bundle_payload({"schema_version": 1, "agent_run_id": "run-1", "traces": [matching, foreign], "logs": []}))
+    rule = next(item for item in foreign_result.rule_results if item.rule_id == "TG-TEL-003B")
+    assert rule.status == RuleStatus.FAILED
+    assert rule.evidence["foreign_trace_ids"] == ("c" * 32,)
+    assert rule.evidence["foreign_agent_run_ids"] == ("run-2",)
+
+    no_match = evaluate_run_bundle(load_run_bundle_payload({"schema_version": 1, "agent_run_id": "run-1", "traces": [foreign], "logs": []}))
+    assert status(no_match, "TG-TEL-003B") == RuleStatus.FAILED
+
+    duplicate_envelope = evaluate_run_bundle(load_run_bundle_payload({"schema_version": 1, "agent_run_id": "run-1", "traces": [matching, matching], "logs": []}))
+    assert status(duplicate_envelope, "TG-TEL-003B") == RuleStatus.PASSED
 
 
 def test_unapproved_traceguard_attributes_do_not_affect_verdict() -> None:

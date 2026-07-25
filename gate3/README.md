@@ -10,6 +10,8 @@ Public verdicts are `PASS`, `PASS_WITH_WARNINGS`, and `BLOCK`. Each evaluation e
 
 Trace-only evaluation cannot prove run-level fragmentation or log correlation, so `TG-TEL-003B` and `TG-TEL-008` return `NOT_APPLICABLE`. Run-bundle evaluation aggregates trace-level rules across supplied traces and evaluates run-level rules directly.
 
+Run bundles must contain at least one trace. `TG-TEL-003B` validates bundle membership using the bundle `agent_run_id`: at least one supplied `agent.run` root must match the bundle ID, matching traces must resolve to exactly one unique trace ID, and any supplied trace with a different non-empty `agent.run_id` is a foreign-run failure.
+
 `traceguard.run_id`, `traceguard.project`, and `traceguard.gate` are not required evaluator input attributes. They may remain in metadata, preflight search attributes, runtime artifacts, or evaluator-output telemetry.
 
 CLI:
@@ -25,3 +27,5 @@ python gate3/cli.py list-rules
 Individual exit codes are `0` for `PASS`, `10` for `PASS_WITH_WARNINGS`, `20` for `BLOCK`, `2` for invalid input, and `3` for internal evaluator failure.
 
 Gate 3 remains network-independent. Live SigNoz proof lives in `gate3_preflight/`.
+
+Live contract completion remains dependent on a successful `gate3_preflight` run against the local SigNoz and OTLP collector stack.
