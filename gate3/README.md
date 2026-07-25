@@ -1,104 +1,27 @@
-# TraceGuard Gate 3A
+# Gate 3
 
-Gate 3A evaluates one already-normalized trace and answers whether the telemetry is complete and structurally trustworthy enough for deterministic evaluation.
+Gate 3 is the deterministic TraceGuard telemetry evaluator. The initial Gate 3A implementation was a useful prototype, but it used noncanonical `TG-TEL-*` rule assignments. Repository head now uses `traceguard-telemetry-v2`.
 
-Gate 2 remains responsible for authentication, retrieval, source selection, and normalization. The established Gate 2 decision is `TRACE_API_AUTHORITATIVE`: future live normalized telemetry should come from the SigNoz Trace API. Gate 3A does not reopen that source-selection decision.
+The canonical contract is in `gate3/spec/traceguard_telemetry_contract_v1.md`; the machine-readable catalogue is `gate3/spec/ruleset_v1.json`; migration from old prototype IDs is documented in `gate3/spec/legacy_rule_migration.json`.
 
-Gate 3A is deliberately offline. It reads normalized JSON, validates the input envelope, applies deterministic telemetry-completeness rules, and emits structured findings plus one final verdict. It does not know about SigNoz API keys, MCP sessions, HTTP endpoints, Docker, collector configuration, databases, dashboards, webhooks, or deployment.
+Public verdicts are `PASS`, `PASS_WITH_WARNINGS`, and `BLOCK`. Each evaluation emits one `RuleResult` for every registered rule with status `PASSED`, `FAILED`, `NOT_APPLICABLE`, or `EVALUATION_ERROR`.
 
-## Input Contract
+`TG-TEL-*` rules now cover canonical telemetry quality: agent root, agent attributes, tool parent chains, run fragmentation, tool status, model identity, token usage, timestamp validity, and log correlation. Structural checks moved to `TG-STR-*`.
 
-Gate 3A consumes a versioned envelope:
+Trace-only evaluation cannot prove run-level fragmentation or log correlation, so `TG-TEL-003B` and `TG-TEL-008` return `NOT_APPLICABLE`. Run-bundle evaluation aggregates trace-level rules across supplied traces and evaluates run-level rules directly.
 
-```json
-{
-  "schema_version": 1,
-  "trace": {
-    "trace_id": "0123456789abcdef0123456789abcdef",
-    "spans": [],
-    "retrieved_at": "2026-07-25T08:00:02Z",
-    "source": "fixture",
-    "metadata": {}
-  }
-}
-```
+`traceguard.run_id`, `traceguard.project`, and `traceguard.gate` are not required evaluator input attributes. They may remain in metadata, preflight search attributes, runtime artifacts, or evaluator-output telemetry.
 
-Malformed JSON or schema-invalid envelopes raise `TraceInputError`. That is not the same as incomplete telemetry. A valid trace with missing span fields can produce `WARN` or `BLOCK` findings; malformed input is rejected before evaluation so it is not disguised as a telemetry verdict. `schema_version` and `duration_nano` must be real JSON integers; booleans, floating-point values, strings, null, arrays, and objects are rejected rather than coerced.
-
-## Verdicts
-
-Verdict precedence is exact:
-
-- `BLOCK`: at least one blocking finding exists.
-- `WARN`: no blocking findings exist, but at least one warning finding exists.
-- `PASS`: no blocking or warning findings exist.
-
-There is no numerical score, weighting, or severity average in Gate 3A. A single blocking condition must remain a block.
-
-## Rule Catalogue
-
-Rules run in ascending rule-ID order, are side-effect-free, deterministic, and never perform network access.
-
-| Rule ID | Name | Severity | Purpose |
-| --- | --- | --- | --- |
-| TG-TEL-001 | TRACE_HAS_SPANS | BLOCKING | Require at least one span in the normalized trace. |
-| TG-TEL-002 | REQUIRED_SPAN_IDENTITY | BLOCKING | Require trace_id, span_id, and span_name on every span. |
-| TG-TEL-003 | TRACE_ID_CONSISTENCY | BLOCKING | Require span trace IDs to match the enclosing trace ID. |
-| TG-TEL-004 | UNIQUE_SPAN_IDS | BLOCKING | Require unique non-empty span IDs within one trace. |
-| TG-TEL-005 | SINGLE_ROOT_SPAN | BLOCKING | Require exactly one root span when spans exist. |
-| TG-TEL-006 | PARENT_REFERENCE_INTEGRITY | BLOCKING | Require non-root parent_span_id values to resolve within the trace. |
-| TG-TEL-007 | REQUIRED_TIMING_FIELDS | BLOCKING | Require start_time, end_time, and duration_nano on every span. |
-| TG-TEL-008 | VALID_TIMING_ORDER | BLOCKING | Reject negative durations and end_time values before start_time. |
-| TG-TEL-009 | SERVICE_IDENTITY | WARNING | Require service identity from service_name or resource service.name. |
-| TG-TEL-010 | AGENT_RUN_CORRELATION | BLOCKING | Require root agent.run_id for external run correlation. |
-| TG-TEL-011 | TRACEGUARD_RUN_CORRELATION | WARNING | Warn when root traceguard.run_id is absent. |
-| TG-TEL-012 | RUN_ID_CONSISTENCY | BLOCKING | Require run ID attributes to be internally consistent. |
-| TG-TEL-013 | TRACEGUARD_CONTEXT | WARNING | Warn when root TraceGuard project or gate context is absent. |
-
-TG-AGT agent-behaviour reliability rules are deferred. Gate 3A first proves that the telemetry substrate is complete and deterministic before judging agent behaviour.
-
-## Fixtures
-
-The committed fixture corpus is synthetic and non-secret:
-
-- `fixtures/valid`: traces expected to pass.
-- `fixtures/warn`: traces expected to warn only.
-- `fixtures/block`: traces expected to block, including one block-plus-warning precedence case.
-
-Independent expected results live in `expected/fixture_expectations.json`. The manifest is loaded with strict JSON object-key validation, so duplicate fixture paths or repeated nested keys are rejected before validation. Tests verify that every fixture has one expectation, every expectation references an existing fixture, expected rule IDs exist, rule ID lists contain no duplicates, and all results match.
-
-## CLI
-
-Default output is structured JSON.
+CLI:
 
 ```powershell
-.\.venv\Scripts\python.exe gate3\cli.py evaluate gate3\fixtures\valid\valid_single_span.json
-.\.venv\Scripts\python.exe gate3\cli.py evaluate-all gate3\fixtures
-.\.venv\Scripts\python.exe gate3\cli.py validate-fixtures gate3\fixtures
+python gate3/cli.py evaluate-trace gate3/fixtures/trace/pass_canonical_agent_trace.json
+python gate3/cli.py evaluate-run gate3/fixtures/run/pass_single_trace_run.json
+python gate3/cli.py evaluate-all
+python gate3/cli.py validate-fixtures
+python gate3/cli.py list-rules
 ```
 
-Evaluation exit codes:
+Individual exit codes are `0` for `PASS`, `10` for `PASS_WITH_WARNINGS`, `20` for `BLOCK`, `2` for invalid input, and `3` for internal evaluator failure.
 
-- `0`: `PASS`
-- `10`: `WARN`
-- `20`: `BLOCK`
-- `2`: invalid CLI usage or invalid input
-- `3`: internal evaluator failure
-
-`evaluate-all` exit codes:
-
-- `0`: all actual results match expected fixture results
-- `1`: one or more fixture results do not match expectations
-- `2`: invalid fixture or expectation manifest
-
-## Tests
-
-Gate 3A tests are offline and do not require SigNoz:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest tests\gate3 -v --basetemp .test-tmp-gate3 -p no:cacheprovider
-.\.venv\Scripts\python.exe gate3\cli.py validate-fixtures gate3\fixtures
-.\.venv\Scripts\python.exe gate3\cli.py evaluate-all gate3\fixtures
-```
-
-No live Trace API retrieval, MCP retrieval, `.env` loading, or network access is part of Gate 3A. Tests scan production Gate 3A modules for forbidden network imports and execute CLI workflows while socket access is denied.
+Gate 3 remains network-independent. Live SigNoz proof lives in `gate3_preflight/`.

@@ -1,0 +1,470 @@
+{
+  "captured_at": "2026-07-25T15:14:19.301387Z",
+  "failed_fixture_expectations": [],
+  "fixture_count": 24,
+  "fixture_expectation_matches": true,
+  "results": {
+    "run": {
+      "block_fragmented_run.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "FAILED",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "pass_correlated_logs.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "PASSED",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "PASSED"
+        },
+        "verdict": "PASS"
+      },
+      "pass_single_trace_run.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "PASSED",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "PASS"
+      },
+      "pass_with_warnings_uncorrelated_logs.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "PASSED",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "FAILED"
+        },
+        "verdict": "PASS_WITH_WARNINGS"
+      },
+      "run_bundle_without_logs.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "PASSED",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "PASS"
+      }
+    },
+    "trace": {
+      "block_duplicate_span_id.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "FAILED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "FAILED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "NOT_APPLICABLE",
+          "TG-TEL-006": "NOT_APPLICABLE",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_empty_trace.json": {
+        "rule_statuses": {
+          "TG-STR-001": "FAILED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "FAILED",
+          "TG-TEL-002": "FAILED",
+          "TG-TEL-003A": "NOT_APPLICABLE",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "NOT_APPLICABLE",
+          "TG-TEL-005": "NOT_APPLICABLE",
+          "TG-TEL-006": "NOT_APPLICABLE",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_inconsistent_trace_id.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "FAILED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "NOT_APPLICABLE",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "NOT_APPLICABLE",
+          "TG-TEL-005": "NOT_APPLICABLE",
+          "TG-TEL-006": "NOT_APPLICABLE",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_invalid_timestamps.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "FAILED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_missing_agent_attributes.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "FAILED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_missing_agent_root.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "FAILED",
+          "TG-TEL-002": "FAILED",
+          "TG-TEL-003A": "FAILED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "NOT_APPLICABLE",
+          "TG-TEL-006": "NOT_APPLICABLE",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_missing_model_identity.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "FAILED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_missing_span_identity.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "FAILED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "NOT_APPLICABLE",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "NOT_APPLICABLE",
+          "TG-TEL-005": "NOT_APPLICABLE",
+          "TG-TEL-006": "NOT_APPLICABLE",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_missing_tool_status.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "FAILED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_tool_chain_not_reaching_agent.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "FAILED",
+          "TG-TEL-002": "FAILED",
+          "TG-TEL-003A": "FAILED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_tool_orphan_parent.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "FAILED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_tool_parent_cycle.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "FAILED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "block_wrong_root_name.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "FAILED",
+          "TG-TEL-002": "FAILED",
+          "TG-TEL-003A": "NOT_APPLICABLE",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "NOT_APPLICABLE",
+          "TG-TEL-005": "NOT_APPLICABLE",
+          "TG-TEL-006": "NOT_APPLICABLE",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "BLOCK"
+      },
+      "pass_canonical_agent_trace.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "PASS"
+      },
+      "pass_no_model_spans.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "NOT_APPLICABLE",
+          "TG-TEL-006": "NOT_APPLICABLE",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "PASS"
+      },
+      "pass_no_tool_spans.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "NOT_APPLICABLE",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "NOT_APPLICABLE",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "PASS"
+      },
+      "pass_traceguard_metadata_ignored.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "PASS"
+      },
+      "pass_with_warnings_missing_service_identity.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "FAILED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "PASSED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "PASS_WITH_WARNINGS"
+      },
+      "pass_with_warnings_missing_token_usage.json": {
+        "rule_statuses": {
+          "TG-STR-001": "PASSED",
+          "TG-STR-002": "PASSED",
+          "TG-STR-003": "PASSED",
+          "TG-STR-004": "PASSED",
+          "TG-STR-005": "PASSED",
+          "TG-TEL-001": "PASSED",
+          "TG-TEL-002": "PASSED",
+          "TG-TEL-003A": "PASSED",
+          "TG-TEL-003B": "NOT_APPLICABLE",
+          "TG-TEL-004": "PASSED",
+          "TG-TEL-005": "PASSED",
+          "TG-TEL-006": "FAILED",
+          "TG-TEL-007": "PASSED",
+          "TG-TEL-008": "NOT_APPLICABLE"
+        },
+        "verdict": "PASS_WITH_WARNINGS"
+      }
+    }
+  },
+  "ruleset_version": "traceguard-telemetry-v2",
+  "sanitized": true
+}

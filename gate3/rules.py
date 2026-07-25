@@ -2,62 +2,83 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable
+from typing import Any, Callable
 
 try:
-    from .models import NormalizedTrace, RuleFinding, Severity, Span, is_valid_integer
+    from .models import EvaluationLevel, NormalizedTrace, RuleResult, RuleStatus, RunBundle, Severity, Span, is_valid_integer
 except ImportError:  # pragma: no cover
-    from models import NormalizedTrace, RuleFinding, Severity, Span, is_valid_integer
+    from models import EvaluationLevel, NormalizedTrace, RuleResult, RuleStatus, RunBundle, Severity, Span, is_valid_integer
 
 
-RuleFunction = Callable[[NormalizedTrace], list[RuleFinding]]
 ZERO_PARENT_SPAN_ID = "0" * 16
+DOC = "gate3/spec/traceguard_telemetry_contract_v1.md"
+RuleFunction = Callable[[NormalizedTrace | RunBundle], RuleResult]
 
 
 @dataclass(frozen=True)
 class Rule:
     rule_id: str
     name: str
+    namespace: str
+    evaluation_level: EvaluationLevel
     severity: Severity
     purpose: str
-    scope: str
+    applicability: str
+    expected: Any
     function: RuleFunction
+    supersedes: str | None = None
     deterministic: bool = True
+    public: bool = True
 
-    def evaluate(self, trace: NormalizedTrace) -> list[RuleFinding]:
-        return self.function(trace)
+    def evaluate(self, target: NormalizedTrace | RunBundle) -> RuleResult:
+        return self.function(target)
+
+    def result(
+        self,
+        status: RuleStatus,
+        message: str,
+        *,
+        observed: Any,
+        evidence: dict[str, Any] | None = None,
+        affected_span_ids: tuple[str, ...] = (),
+        affected_trace_ids: tuple[str, ...] = (),
+    ) -> RuleResult:
+        return RuleResult(
+            rule_id=self.rule_id,
+            rule_name=self.name,
+            namespace=self.namespace,
+            severity=self.severity,
+            status=status,
+            message=message,
+            expected=self.expected,
+            observed=observed,
+            evidence=evidence or {},
+            affected_span_ids=tuple(sorted(x for x in affected_span_ids if x)),
+            affected_trace_ids=tuple(sorted(x for x in affected_trace_ids if x)),
+            deterministic=self.deterministic,
+            documentation=f"{DOC}#{self.rule_id.lower()}",
+        )
 
     def to_catalog_dict(self) -> dict[str, object]:
         return {
             "rule_id": self.rule_id,
-            "name": self.name,
+            "rule_name": self.name,
+            "namespace": self.namespace,
+            "ruleset_version": "traceguard-telemetry-v2",
+            "evaluation_level": self.evaluation_level.value,
             "severity": self.severity.value,
             "purpose": self.purpose,
-            "scope": self.scope,
+            "applicability": self.applicability,
+            "expected": self.expected,
             "deterministic": self.deterministic,
+            "public": self.public,
+            "supersedes": self.supersedes,
+            "documentation_reference": f"{DOC}#{self.rule_id.lower()}",
+            "expected_evidence": "See canonical specification evidence requirements.",
         }
 
 
-def finding(
-    rule: Rule,
-    message: str,
-    evidence: dict[str, object],
-    *,
-    span_ids: tuple[str, ...] = (),
-) -> RuleFinding:
-    return RuleFinding(
-        rule_id=rule.rule_id,
-        rule_name=rule.name,
-        severity=rule.severity,
-        message=message,
-        evidence=evidence,
-        span_ids=span_ids,
-        deterministic=rule.deterministic,
-        documentation=rule.purpose,
-    )
-
-
-def is_empty_string(value: object) -> bool:
+def is_empty(value: object) -> bool:
     return not isinstance(value, str) or value.strip() == ""
 
 
@@ -70,329 +91,366 @@ def root_spans(trace: NormalizedTrace) -> list[Span]:
     return [span for span in trace.spans if is_root_span(span)]
 
 
-def single_root(trace: NormalizedTrace) -> Span | None:
-    roots = root_spans(trace)
-    return roots[0] if len(roots) == 1 else None
+def agent_roots(trace: NormalizedTrace) -> list[Span]:
+    return [span for span in root_spans(trace) if span.span_name == "agent.run"]
 
 
-def span_ref(span: Span) -> tuple[str, ...]:
-    return (span.span_id,) if span.span_id else ()
+def single_agent_root(trace: NormalizedTrace) -> Span | None:
+    roots = agent_roots(trace)
+    return roots[0] if len(roots) == 1 and len(root_spans(trace)) == 1 else None
+
+
+def is_tool_span(span: Span) -> bool:
+    operation = span.attributes.get("gen_ai.operation.name")
+    return span.span_name == "tool.call" or span.span_name.startswith("tool.") or operation == "execute_tool"
+
+
+def is_model_operation(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    lowered = value.lower()
+    return any(term in lowered for term in ("model", "chat", "completion", "llm", "generate"))
+
+
+def is_model_span(span: Span) -> bool:
+    return (
+        span.span_name == "model.call"
+        or span.span_name.startswith("model.")
+        or "gen_ai.request.model" in span.attributes
+        or is_model_operation(span.attributes.get("gen_ai.operation.name"))
+    )
 
 
 def parse_time(value: object) -> datetime | None:
     if not isinstance(value, str) or value == "":
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+    return parsed if parsed.tzinfo is not None else None
 
 
-def tg_tel_001(trace: NormalizedTrace) -> list[RuleFinding]:
+def trace_ids_for_bundle(bundle: RunBundle) -> tuple[str, ...]:
+    return tuple(sorted({trace.trace_id for trace in bundle.traces if trace.trace_id}))
+
+
+def first_trace(target: NormalizedTrace | RunBundle) -> NormalizedTrace:
+    if isinstance(target, NormalizedTrace):
+        return target
+    return target.traces[0] if target.traces else NormalizedTrace(1, "", (), None, "run-bundle", {})
+
+
+def tg_tel_001(target: NormalizedTrace | RunBundle) -> RuleResult:
     rule = RULE_BY_ID["TG-TEL-001"]
-    if len(trace.spans) == 0:
-        return [finding(rule, "Trace contains zero spans.", {"observed_span_count": 0})]
-    return []
+    trace = first_trace(target)
+    roots = root_spans(trace)
+    root_ids = tuple(sorted(span.span_id for span in roots if span.span_id))
+    root_names = tuple(sorted(span.span_name for span in roots))
+    passed = len(roots) == 1 and roots[0].span_name == "agent.run"
+    return rule.result(
+        RuleStatus.PASSED if passed else RuleStatus.FAILED,
+        "Exactly one agent.run root span is present." if passed else "Trace must contain exactly one root span named agent.run.",
+        observed={"root_span_count": len(roots), "root_span_ids": root_ids, "root_span_names": root_names},
+        evidence={
+            "root_span_count": len(roots),
+            "root_span_ids": root_ids,
+            "root_span_names": root_names,
+            "expected_root_span_name": "agent.run",
+        },
+        affected_span_ids=root_ids,
+        affected_trace_ids=(trace.trace_id,),
+    )
 
 
-def tg_tel_002(trace: NormalizedTrace) -> list[RuleFinding]:
+def tg_tel_002(target: NormalizedTrace | RunBundle) -> RuleResult:
     rule = RULE_BY_ID["TG-TEL-002"]
-    findings: list[RuleFinding] = []
-    for span in trace.spans:
-        missing = [field for field in ("trace_id", "span_id", "span_name") if is_empty_string(span.get(field))]
-        if missing:
-            findings.append(
-                finding(
-                    rule,
-                    "Span is missing required identity fields.",
-                    {"missing_fields": missing, "span_index": span.index},
-                    span_ids=span_ref(span),
-                )
-            )
-    return findings
+    trace = first_trace(target)
+    root = single_agent_root(trace)
+    expected = ("agent.run_id", "agent.name", "agent.status")
+    if root is None:
+        return rule.result(
+            RuleStatus.FAILED,
+            "No unambiguous agent.run root span is available for required attribute checks.",
+            observed={"root_span_id": None, "missing_attributes": list(expected)},
+            evidence={"root_span_id": None, "missing_attributes": list(expected), "expected_attributes": list(expected)},
+            affected_trace_ids=(trace.trace_id,),
+        )
+    missing = [key for key in expected if is_empty(root.attributes.get(key))]
+    status = RuleStatus.PASSED if not missing else RuleStatus.FAILED
+    return rule.result(
+        status,
+        "Agent root contains required identity and state attributes." if status == RuleStatus.PASSED else "Agent root is missing required attributes.",
+        observed={"root_span_id": root.span_id, "missing_attributes": missing, "present_attribute_names": sorted(root.attributes)},
+        evidence={
+            "root_span_id": root.span_id,
+            "missing_attributes": missing,
+            "present_attribute_names": sorted(root.attributes),
+            "expected_attributes": list(expected),
+        },
+        affected_span_ids=(root.span_id,),
+        affected_trace_ids=(trace.trace_id,),
+    )
 
 
-def tg_tel_003(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-003"]
-    observed = sorted({span.trace_id for span in trace.spans if span.trace_id})
-    mismatch = any(span.trace_id and span.trace_id != trace.trace_id for span in trace.spans)
-    if mismatch or len(observed) > 1:
-        return [
-            finding(
-                rule,
-                "Span trace IDs are inconsistent with the enclosing trace.",
-                {"enclosing_trace_id": trace.trace_id, "observed_trace_ids": observed},
-            )
-        ]
-    return []
+def tg_tel_003a(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-TEL-003A"]
+    trace = first_trace(target)
+    root = single_agent_root(trace)
+    tools = sorted([span for span in trace.spans if is_tool_span(span)], key=lambda span: (span.span_id, span.index))
+    if not tools:
+        return rule.result(RuleStatus.NOT_APPLICABLE, "Trace contains no tool spans.", observed={"tool_span_ids": []}, evidence={"tool_span_ids": []}, affected_trace_ids=(trace.trace_id,))
+    if root is None:
+        return rule.result(
+            RuleStatus.FAILED,
+            "Tool parent chains cannot be proven without one unambiguous agent.run root.",
+            observed={"tool_span_ids": [span.span_id for span in tools], "agent_run_root_span_id": None},
+            evidence={"tool_span_ids": [span.span_id for span in tools], "expected_agent_run_root_span_id": None, "chain_termination_reason": "ambiguous_agent_root"},
+            affected_span_ids=tuple(span.span_id for span in tools),
+            affected_trace_ids=(trace.trace_id,),
+        )
+    spans_by_id = {span.span_id: span for span in trace.spans if span.span_id}
+    failures: list[dict[str, Any]] = []
+    for tool in tools:
+        visited: list[str] = []
+        parent_id = tool.parent_span_id
+        seen = {tool.span_id}
+        while True:
+            if not parent_id or parent_id.lower() == ZERO_PARENT_SPAN_ID:
+                failures.append({"tool_span_id": tool.span_id, "visited_parent_span_ids": visited, "chain_termination_reason": "terminated_before_agent_root"})
+                break
+            if parent_id in seen:
+                failures.append({"tool_span_id": tool.span_id, "visited_parent_span_ids": visited, "cycle_path": [*visited, parent_id], "chain_termination_reason": "cycle"})
+                break
+            parent = spans_by_id.get(parent_id)
+            if parent is None:
+                failures.append({"tool_span_id": tool.span_id, "visited_parent_span_ids": visited, "unresolved_parent_id": parent_id, "chain_termination_reason": "missing_parent"})
+                break
+            visited.append(parent_id)
+            if parent.span_id == root.span_id:
+                break
+            seen.add(parent_id)
+            parent_id = parent.parent_span_id
+    status = RuleStatus.PASSED if not failures else RuleStatus.FAILED
+    return rule.result(
+        status,
+        "Every tool span parent chain reaches the agent.run root." if status == RuleStatus.PASSED else "One or more tool span parent chains do not reach the agent.run root.",
+        observed={"tool_span_ids": [span.span_id for span in tools], "failures": failures},
+        evidence={"tool_span_ids": [span.span_id for span in tools], "expected_agent_run_root_span_id": root.span_id, "failures": failures},
+        affected_span_ids=tuple(item["tool_span_id"] for item in failures),
+        affected_trace_ids=(trace.trace_id,),
+    )
 
 
-def tg_tel_004(trace: NormalizedTrace) -> list[RuleFinding]:
+def tg_tel_003b(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-TEL-003B"]
+    if isinstance(target, NormalizedTrace):
+        return rule.result(RuleStatus.NOT_APPLICABLE, "Run-level trace collection was not supplied.", observed={"trace_ids": [target.trace_id]}, evidence={"reason": "Run-level trace collection was not supplied."}, affected_trace_ids=(target.trace_id,))
+    trace_ids = trace_ids_for_bundle(target)
+    status = RuleStatus.PASSED if len(trace_ids) <= 1 else RuleStatus.FAILED
+    return rule.result(
+        status,
+        "Agent run is contained in one trace." if status == RuleStatus.PASSED else "Agent run is fragmented across multiple traces.",
+        observed={"agent_run_id": target.agent_run_id, "observed_trace_ids": trace_ids, "observed_trace_count": len(trace_ids)},
+        evidence={"agent_run_id": target.agent_run_id, "observed_trace_ids": trace_ids, "observed_trace_count": len(trace_ids), "expected_maximum_trace_count": 1},
+        affected_trace_ids=trace_ids if status == RuleStatus.FAILED else (),
+    )
+
+
+def tg_tel_004(target: NormalizedTrace | RunBundle) -> RuleResult:
     rule = RULE_BY_ID["TG-TEL-004"]
+    trace = first_trace(target)
+    tools = sorted([span for span in trace.spans if is_tool_span(span)], key=lambda span: (span.span_id, span.index))
+    if not tools:
+        return rule.result(RuleStatus.NOT_APPLICABLE, "Trace contains no tool spans.", observed={"tool_span_ids": []}, evidence={"tool_span_ids": []}, affected_trace_ids=(trace.trace_id,))
+    missing = [span.span_id for span in tools if is_empty(span.attributes.get("tool.status"))]
+    status_values = {span.span_id: span.attributes.get("tool.status") for span in tools}
+    status = RuleStatus.PASSED if not missing else RuleStatus.FAILED
+    return rule.result(
+        status,
+        "Every tool span contains tool.status." if status == RuleStatus.PASSED else "One or more tool spans are missing tool.status.",
+        observed={"tool_span_ids": [span.span_id for span in tools], "spans_missing_tool_status": missing, "observed_status_values": status_values},
+        evidence={"tool_span_ids": [span.span_id for span in tools], "spans_missing_tool_status": missing, "observed_status_values": status_values, "expected_non_empty_attribute": "tool.status"},
+        affected_span_ids=tuple(missing),
+        affected_trace_ids=(trace.trace_id,),
+    )
+
+
+def tg_tel_005(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-TEL-005"]
+    trace = first_trace(target)
+    models = sorted([span for span in trace.spans if is_model_span(span)], key=lambda span: (span.span_id, span.index))
+    if not models:
+        return rule.result(RuleStatus.NOT_APPLICABLE, "Trace contains no model spans.", observed={"model_span_ids": []}, evidence={"model_span_ids": []}, affected_trace_ids=(trace.trace_id,))
+    missing = [span.span_id for span in models if is_empty(span.attributes.get("gen_ai.request.model"))]
+    values = {span.span_id: span.attributes.get("gen_ai.request.model") for span in models}
+    status = RuleStatus.PASSED if not missing else RuleStatus.FAILED
+    return rule.result(
+        status,
+        "Every model span identifies the requested model." if status == RuleStatus.PASSED else "One or more model spans are missing gen_ai.request.model.",
+        observed={"model_span_ids": [span.span_id for span in models], "spans_missing_model_identity": missing, "observed_model_values": values},
+        evidence={"model_span_ids": [span.span_id for span in models], "spans_missing_model_identity": missing, "observed_model_values": values},
+        affected_span_ids=tuple(missing),
+        affected_trace_ids=(trace.trace_id,),
+    )
+
+
+def tg_tel_006(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-TEL-006"]
+    trace = first_trace(target)
+    models = sorted([span for span in trace.spans if is_model_span(span)], key=lambda span: (span.span_id, span.index))
+    if not models:
+        return rule.result(RuleStatus.NOT_APPLICABLE, "Trace contains no model spans.", observed={"model_span_ids": []}, evidence={"model_span_ids": []}, affected_trace_ids=(trace.trace_id,))
+    fields = ("gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens")
+    missing: dict[str, list[str]] = {}
+    invalid: dict[str, dict[str, Any]] = {}
+    values: dict[str, dict[str, Any]] = {}
+    for span in models:
+        values[span.span_id] = {field: span.attributes.get(field) for field in fields}
+        for field in fields:
+            value = span.attributes.get(field)
+            if value is None:
+                missing.setdefault(span.span_id, []).append(field)
+            elif not is_valid_integer(value) or value < 0:
+                invalid.setdefault(span.span_id, {})[field] = value
+    status = RuleStatus.PASSED if not missing and not invalid else RuleStatus.FAILED
+    return rule.result(
+        status,
+        "Every model span contains valid token usage." if status == RuleStatus.PASSED else "One or more model spans are missing or have invalid token usage.",
+        observed={"model_span_ids": [span.span_id for span in models], "missing_token_fields": missing, "invalid_token_fields": invalid, "observed_values": values},
+        evidence={"model_span_ids": [span.span_id for span in models], "missing_token_fields": missing, "invalid_token_fields": invalid, "observed_values": values, "expected_integer_constraints": "real integers, not booleans, zero or greater"},
+        affected_span_ids=tuple(sorted(set(missing) | set(invalid))),
+        affected_trace_ids=(trace.trace_id,),
+    )
+
+
+def tg_tel_007(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-TEL-007"]
+    trace = first_trace(target)
+    affected: list[str] = []
+    details: dict[str, dict[str, Any]] = {}
+    for span in trace.spans:
+        missing = [field for field in ("start_time", "end_time", "duration_nano") if span.get(field) is None]
+        invalid: list[str] = []
+        start = parse_time(span.get("start_time"))
+        end = parse_time(span.get("end_time"))
+        duration = span.get("duration_nano")
+        if span.get("start_time") is not None and start is None:
+            invalid.append("start_time")
+        if span.get("end_time") is not None and end is None:
+            invalid.append("end_time")
+        if duration is not None and (not is_valid_integer(duration) or duration < 0):
+            invalid.append("duration_nano")
+        if start is not None and end is not None and end < start:
+            invalid.append("end_time_before_start_time")
+        if missing or invalid:
+            affected.append(span.span_id)
+            details[span.span_id or f"span_index_{span.index}"] = {
+                "missing_fields": missing,
+                "invalid_fields": invalid,
+                "observed": {"start_time": span.get("start_time"), "end_time": span.get("end_time"), "duration_nano": duration},
+            }
+    status = RuleStatus.PASSED if not affected else RuleStatus.FAILED
+    return rule.result(
+        status,
+        "All spans contain valid internally consistent timing." if status == RuleStatus.PASSED else "One or more spans have invalid timing.",
+        observed={"affected_span_ids": affected, "details": details},
+        evidence={"affected_span_ids": affected, "details": details},
+        affected_span_ids=tuple(affected),
+        affected_trace_ids=(trace.trace_id,),
+    )
+
+
+def tg_tel_008(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-TEL-008"]
+    if isinstance(target, NormalizedTrace):
+        return rule.result(RuleStatus.NOT_APPLICABLE, "Correlated log collection was not supplied.", observed={"log_count": 0}, evidence={"reason": "Correlated log collection was not supplied."}, affected_trace_ids=(target.trace_id,))
+    if not target.logs:
+        return rule.result(RuleStatus.NOT_APPLICABLE, "Run bundle contains no logs.", observed={"log_count": 0}, evidence={"log_count": 0, "expected_agent_run_id": target.agent_run_id}, affected_trace_ids=trace_ids_for_bundle(target))
+    trace_ids = set(trace_ids_for_bundle(target))
+    span_ids_by_trace = {trace.trace_id: {span.span_id for span in trace.spans if span.span_id} for trace in target.traces}
+    bad: list[int] = []
+    for log in target.logs:
+        log_run_id = log.attributes.get("agent.run_id")
+        if log_run_id != target.agent_run_id:
+            bad.append(log.index)
+            continue
+        if log.trace_id and log.trace_id not in trace_ids:
+            bad.append(log.index)
+            continue
+        if log.trace_id and log.span_id and log.span_id not in span_ids_by_trace.get(log.trace_id, set()):
+            bad.append(log.index)
+    status = RuleStatus.PASSED if not bad else RuleStatus.FAILED
+    return rule.result(
+        status,
+        "All supplied logs correlate to the run bundle." if status == RuleStatus.PASSED else "One or more supplied logs do not correlate to the run bundle.",
+        observed={"log_count": len(target.logs), "correlated_log_count": len(target.logs) - len(bad), "uncorrelated_log_indexes": bad, "observed_trace_ids": sorted(trace_ids)},
+        evidence={"log_count": len(target.logs), "correlated_log_count": len(target.logs) - len(bad), "uncorrelated_log_indexes": bad, "expected_agent_run_id": target.agent_run_id, "observed_trace_ids": sorted(trace_ids)},
+        affected_trace_ids=trace_ids_for_bundle(target),
+    )
+
+
+def tg_str_001(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-STR-001"]
+    trace = first_trace(target)
+    passed = len(trace.spans) > 0
+    return rule.result(RuleStatus.PASSED if passed else RuleStatus.FAILED, "Trace contains at least one span." if passed else "Trace contains zero spans.", observed={"span_count": len(trace.spans)}, evidence={"observed_span_count": len(trace.spans)}, affected_trace_ids=(trace.trace_id,))
+
+
+def tg_str_002(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-STR-002"]
+    trace = first_trace(target)
+    affected: list[str] = []
+    missing_by_span: dict[str, list[str]] = {}
+    for span in trace.spans:
+        missing = [field for field in ("trace_id", "span_id", "span_name") if is_empty(span.get(field))]
+        if missing:
+            affected.append(span.span_id)
+            missing_by_span[span.span_id or f"span_index_{span.index}"] = missing
+    return rule.result(RuleStatus.PASSED if not affected else RuleStatus.FAILED, "All spans contain required identity." if not affected else "One or more spans are missing required identity.", observed={"affected_span_ids": affected, "missing_fields": missing_by_span}, evidence={"affected_span_ids": affected, "missing_fields": missing_by_span, "expected_fields": ["trace_id", "span_id", "span_name"]}, affected_span_ids=tuple(affected), affected_trace_ids=(trace.trace_id,))
+
+
+def tg_str_003(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-STR-003"]
+    trace = first_trace(target)
+    observed = tuple(sorted({span.trace_id for span in trace.spans if span.trace_id}))
+    mismatches = tuple(sorted(span.span_id for span in trace.spans if span.trace_id and span.trace_id != trace.trace_id))
+    return rule.result(RuleStatus.PASSED if not mismatches and len(observed) <= 1 else RuleStatus.FAILED, "Span trace IDs match the enclosing trace." if not mismatches and len(observed) <= 1 else "Span trace IDs are inconsistent with the enclosing trace.", observed={"enclosing_trace_id": trace.trace_id, "observed_trace_ids": observed}, evidence={"enclosing_trace_id": trace.trace_id, "observed_trace_ids": observed, "mismatched_span_ids": mismatches}, affected_span_ids=mismatches, affected_trace_ids=(trace.trace_id,))
+
+
+def tg_str_004(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-STR-004"]
+    trace = first_trace(target)
     counts: dict[str, int] = {}
     for span in trace.spans:
         if span.span_id:
             counts[span.span_id] = counts.get(span.span_id, 0) + 1
-    return [
-        finding(
-            rule,
-            "Duplicate span_id found in trace.",
-            {"duplicate_span_id": span_id, "occurrence_count": count},
-            span_ids=(span_id,),
-        )
-        for span_id, count in sorted(counts.items())
-        if count > 1
-    ]
+    dupes = tuple(sorted(span_id for span_id, count in counts.items() if count > 1))
+    return rule.result(RuleStatus.PASSED if not dupes else RuleStatus.FAILED, "Span IDs are unique within the trace." if not dupes else "Duplicate span IDs were found within the trace.", observed={"duplicate_span_ids": dupes}, evidence={"duplicate_span_ids": dupes, "span_id_counts": {key: counts[key] for key in dupes}}, affected_span_ids=dupes, affected_trace_ids=(trace.trace_id,))
 
 
-def tg_tel_005(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-005"]
-    if not trace.spans:
-        return []
-    roots = root_spans(trace)
-    if len(roots) != 1:
-        return [
-            finding(
-                rule,
-                "Trace must contain exactly one root span.",
-                {"observed_root_count": len(roots), "root_span_ids": sorted(span.span_id for span in roots if span.span_id)},
-            )
-        ]
-    return []
-
-
-def tg_tel_006(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-006"]
-    span_ids = {span.span_id for span in trace.spans if span.span_id}
-    findings: list[RuleFinding] = []
-    for span in trace.spans:
-        parent = span.parent_span_id
-        if is_root_span(span):
-            continue
-        if not parent or parent not in span_ids:
-            findings.append(
-                finding(
-                    rule,
-                    "Non-root span references an unresolved parent_span_id.",
-                    {"child_span_id": span.span_id, "unresolved_parent_span_id": parent},
-                    span_ids=span_ref(span),
-                )
-            )
-    return findings
-
-
-def tg_tel_007(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-007"]
-    findings: list[RuleFinding] = []
-    for span in trace.spans:
-        missing = [field for field in ("start_time", "end_time", "duration_nano") if span.get(field) is None]
-        if missing:
-            findings.append(
-                finding(
-                    rule,
-                    "Span is missing required timing fields.",
-                    {"missing_timing_fields": missing},
-                    span_ids=span_ref(span),
-                )
-            )
-    return findings
-
-
-def tg_tel_008(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-008"]
-    findings: list[RuleFinding] = []
-    for span in trace.spans:
-        duration = span.get("duration_nano")
-        if is_valid_integer(duration) and duration < 0:
-            findings.append(
-                finding(
-                    rule,
-                    "Span duration_nano is negative.",
-                    {"duration_nano": duration},
-                    span_ids=span_ref(span),
-                )
-            )
-        start = parse_time(span.get("start_time"))
-        end = parse_time(span.get("end_time"))
-        if start is not None and end is not None and end < start:
-            findings.append(
-                finding(
-                    rule,
-                    "Span end_time is before start_time.",
-                    {"start_time": span.get("start_time"), "end_time": span.get("end_time")},
-                    span_ids=span_ref(span),
-                )
-            )
-    return findings
-
-
-def tg_tel_009(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-009"]
-    findings: list[RuleFinding] = []
-    for span in trace.spans:
-        service_name_present = isinstance(span.get("service_name"), str) and span.get("service_name").strip() != ""
-        resource_service_name_present = (
-            isinstance(span.resource_attributes.get("service.name"), str)
-            and span.resource_attributes.get("service.name").strip() != ""
-        )
-        if not service_name_present and not resource_service_name_present:
-            findings.append(
-                finding(
-                    rule,
-                    "Span is missing service identity.",
-                    {
-                        "span_id": span.span_id,
-                        "service_name_present": False,
-                        "resource_service_name_present": False,
-                    },
-                    span_ids=span_ref(span),
-                )
-            )
-    return findings
-
-
-def tg_tel_010(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-010"]
-    root = single_root(trace)
-    if root is None:
-        return []
-    if is_empty_string(root.attributes.get("agent.run_id")):
-        return [
-            finding(
-                rule,
-                "Root span is missing agent.run_id.",
-                {"root_span_id": root.span_id, "missing_attribute": "agent.run_id"},
-                span_ids=span_ref(root),
-            )
-        ]
-    return []
-
-
-def tg_tel_011(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-011"]
-    root = single_root(trace)
-    if root is None:
-        return []
-    if is_empty_string(root.attributes.get("traceguard.run_id")):
-        return [
-            finding(
-                rule,
-                "Root span is missing traceguard.run_id.",
-                {"root_span_id": root.span_id, "missing_attribute": "traceguard.run_id"},
-                span_ids=span_ref(root),
-            )
-        ]
-    return []
-
-
-def tg_tel_012(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-012"]
-    root = single_root(trace)
-    if root is None:
-        return []
-    root_agent = root.attributes.get("agent.run_id")
-    root_traceguard = root.attributes.get("traceguard.run_id")
-    findings: list[RuleFinding] = []
-    if not is_empty_string(root_agent) and not is_empty_string(root_traceguard) and root_agent != root_traceguard:
-        findings.append(
-            finding(
-                rule,
-                "Root run ID attributes contradict each other.",
-                {
-                    "affected_span_id": root.span_id,
-                    "attribute_names": ["agent.run_id", "traceguard.run_id"],
-                    "conflicting_values": {"agent.run_id": root_agent, "traceguard.run_id": root_traceguard},
-                },
-                span_ids=span_ref(root),
-            )
-        )
-    for span in trace.spans:
-        agent = span.attributes.get("agent.run_id")
-        traceguard = span.attributes.get("traceguard.run_id")
-        if not is_empty_string(agent) and not is_empty_string(traceguard) and agent != traceguard:
-            if span.span_id != root.span_id:
-                findings.append(
-                    finding(
-                        rule,
-                        "Span run ID attributes contradict each other.",
-                        {
-                            "affected_span_id": span.span_id,
-                            "attribute_names": ["agent.run_id", "traceguard.run_id"],
-                            "conflicting_values": {"agent.run_id": agent, "traceguard.run_id": traceguard},
-                        },
-                        span_ids=span_ref(span),
-                    )
-                )
-        if span.span_id == root.span_id:
-            continue
-        if not is_empty_string(agent) and not is_empty_string(root_agent) and agent != root_agent:
-            findings.append(
-                finding(
-                    rule,
-                    "Child agent.run_id contradicts the root agent.run_id.",
-                    {
-                        "affected_span_id": span.span_id,
-                        "attribute_names": ["agent.run_id"],
-                        "conflicting_values": {"root.agent.run_id": root_agent, "child.agent.run_id": agent},
-                    },
-                    span_ids=span_ref(span),
-                )
-            )
-        if not is_empty_string(traceguard) and not is_empty_string(root_traceguard) and traceguard != root_traceguard:
-            findings.append(
-                finding(
-                    rule,
-                    "Child traceguard.run_id contradicts the root traceguard.run_id.",
-                    {
-                        "affected_span_id": span.span_id,
-                        "attribute_names": ["traceguard.run_id"],
-                        "conflicting_values": {
-                            "root.traceguard.run_id": root_traceguard,
-                            "child.traceguard.run_id": traceguard,
-                        },
-                    },
-                    span_ids=span_ref(span),
-                )
-            )
-    return findings
-
-
-def tg_tel_013(trace: NormalizedTrace) -> list[RuleFinding]:
-    rule = RULE_BY_ID["TG-TEL-013"]
-    root = single_root(trace)
-    if root is None:
-        return []
-    missing = [
-        field
-        for field in ("traceguard.project", "traceguard.gate")
-        if is_empty_string(root.attributes.get(field))
-    ]
-    if missing:
-        return [
-            finding(
-                rule,
-                "Root span is missing TraceGuard context attributes.",
-                {"root_span_id": root.span_id, "missing_context_attributes": missing},
-                span_ids=span_ref(root),
-            )
-        ]
-    return []
+def tg_str_005(target: NormalizedTrace | RunBundle) -> RuleResult:
+    rule = RULE_BY_ID["TG-STR-005"]
+    trace = first_trace(target)
+    missing = tuple(sorted(span.span_id for span in trace.spans if is_empty(span.get("service_name")) and is_empty(span.resource_attributes.get("service.name"))))
+    return rule.result(RuleStatus.PASSED if not missing else RuleStatus.FAILED, "Every span exposes service identity." if not missing else "One or more spans are missing service identity.", observed={"spans_missing_service_identity": missing}, evidence={"spans_missing_service_identity": missing, "expected": ["service_name", "resource_attributes.service.name"]}, affected_span_ids=missing, affected_trace_ids=(trace.trace_id,))
 
 
 RULES = (
-    Rule("TG-TEL-001", "TRACE_HAS_SPANS", Severity.BLOCKING, "Require at least one span in the normalized trace.", "trace", tg_tel_001),
-    Rule("TG-TEL-002", "REQUIRED_SPAN_IDENTITY", Severity.BLOCKING, "Require trace_id, span_id, and span_name on every span.", "span", tg_tel_002),
-    Rule("TG-TEL-003", "TRACE_ID_CONSISTENCY", Severity.BLOCKING, "Require span trace IDs to match the enclosing trace ID.", "trace", tg_tel_003),
-    Rule("TG-TEL-004", "UNIQUE_SPAN_IDS", Severity.BLOCKING, "Require unique non-empty span IDs within one trace.", "trace", tg_tel_004),
-    Rule("TG-TEL-005", "SINGLE_ROOT_SPAN", Severity.BLOCKING, "Require exactly one root span when spans exist.", "trace", tg_tel_005),
-    Rule("TG-TEL-006", "PARENT_REFERENCE_INTEGRITY", Severity.BLOCKING, "Require non-root parent_span_id values to resolve within the trace.", "span", tg_tel_006),
-    Rule("TG-TEL-007", "REQUIRED_TIMING_FIELDS", Severity.BLOCKING, "Require start_time, end_time, and duration_nano on every span.", "span", tg_tel_007),
-    Rule("TG-TEL-008", "VALID_TIMING_ORDER", Severity.BLOCKING, "Reject negative durations and end_time values before start_time.", "span", tg_tel_008),
-    Rule("TG-TEL-009", "SERVICE_IDENTITY", Severity.WARNING, "Require service identity from service_name or resource service.name.", "span", tg_tel_009),
-    Rule("TG-TEL-010", "AGENT_RUN_CORRELATION", Severity.BLOCKING, "Require root agent.run_id for external run correlation.", "root", tg_tel_010),
-    Rule("TG-TEL-011", "TRACEGUARD_RUN_CORRELATION", Severity.WARNING, "Warn when root traceguard.run_id is absent.", "root", tg_tel_011),
-    Rule("TG-TEL-012", "RUN_ID_CONSISTENCY", Severity.BLOCKING, "Require run ID attributes to be internally consistent.", "trace", tg_tel_012),
-    Rule("TG-TEL-013", "TRACEGUARD_CONTEXT", Severity.WARNING, "Warn when root TraceGuard project or gate context is absent.", "root", tg_tel_013),
+    Rule("TG-TEL-001", "AGENT_RUN_ROOT", "TG-TEL", EvaluationLevel.TRACE, Severity.BLOCKING, "Require exactly one root span representing the agent execution.", "trace and run bundles", {"root_span_name": "agent.run", "root_count": 1}, tg_tel_001, "Old TG-TEL-005"),
+    Rule("TG-TEL-002", "AGENT_RUN_REQUIRED_ATTRIBUTES", "TG-TEL", EvaluationLevel.TRACE, Severity.BLOCKING, "Require canonical agent identity and state attributes.", "trace and run bundles with agent.run root", {"required_root_attributes": ["agent.run_id", "agent.name", "agent.status"]}, tg_tel_002, "Old TG-TEL-010"),
+    Rule("TG-TEL-003A", "TOOL_PARENT_CHAIN", "TG-TEL", EvaluationLevel.TRACE, Severity.BLOCKING, "Require every tool span to resolve to the agent.run root.", "tool spans only", {"parent_chain_terminates_at": "agent.run root"}, tg_tel_003a, "Old TG-TEL-006"),
+    Rule("TG-TEL-003B", "NO_TRACE_FRAGMENTATION", "TG-TEL", EvaluationLevel.RUN, Severity.BLOCKING, "Require one agent execution identified by agent.run_id to remain within one trace.", "run bundles only", {"maximum_trace_count": 1}, tg_tel_003b),
+    Rule("TG-TEL-004", "TOOL_STATUS", "TG-TEL", EvaluationLevel.TRACE, Severity.BLOCKING, "Require every tool span to contain tool.status.", "tool spans only", {"required_tool_attribute": "tool.status"}, tg_tel_004),
+    Rule("TG-TEL-005", "MODEL_IDENTITY", "TG-TEL", EvaluationLevel.TRACE, Severity.BLOCKING, "Require every model invocation span to identify the requested model.", "model spans only", {"required_model_attribute": "gen_ai.request.model"}, tg_tel_005),
+    Rule("TG-TEL-006", "TOKEN_USAGE", "TG-TEL", EvaluationLevel.TRACE, Severity.WARNING, "Require model invocation spans to expose token usage.", "model spans only", {"required_token_attributes": ["gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens"], "integer_constraints": "not booleans, zero or greater"}, tg_tel_006),
+    Rule("TG-TEL-007", "TIMESTAMP_VALIDITY", "TG-TEL", EvaluationLevel.TRACE, Severity.BLOCKING, "Require valid and internally consistent span timing.", "all spans", {"required_fields": ["start_time", "end_time", "duration_nano"]}, tg_tel_007, "Old TG-TEL-007 and TG-TEL-008"),
+    Rule("TG-TEL-008", "LOG_CORRELATION", "TG-TEL", EvaluationLevel.RUN, Severity.WARNING, "Verify that logs associated with an agent execution can be correlated back to the correct run and trace.", "run bundles with logs", {"log_attributes": ["agent.run_id", "trace_id"]}, tg_tel_008),
+    Rule("TG-STR-001", "TRACE_HAS_SPANS", "TG-STR", EvaluationLevel.TRACE, Severity.BLOCKING, "Require at least one span.", "all traces", {"minimum_span_count": 1}, tg_str_001, "Old TG-TEL-001"),
+    Rule("TG-STR-002", "REQUIRED_SPAN_IDENTITY", "TG-STR", EvaluationLevel.TRACE, Severity.BLOCKING, "Require non-empty trace_id, span_id, and span_name.", "all spans", {"required_fields": ["trace_id", "span_id", "span_name"]}, tg_str_002, "Old TG-TEL-002"),
+    Rule("TG-STR-003", "TRACE_ID_CONSISTENCY", "TG-STR", EvaluationLevel.TRACE, Severity.BLOCKING, "Require every span in one trace object to match the enclosing trace ID.", "all traces", {"all_span_trace_ids_match_enclosing_trace_id": True}, tg_str_003, "Old TG-TEL-003"),
+    Rule("TG-STR-004", "UNIQUE_SPAN_IDS", "TG-STR", EvaluationLevel.TRACE, Severity.BLOCKING, "Require unique non-empty span IDs inside one trace.", "all traces", {"span_ids_unique": True}, tg_str_004, "Old TG-TEL-004"),
+    Rule("TG-STR-005", "SERVICE_IDENTITY", "TG-STR", EvaluationLevel.TRACE, Severity.WARNING, "Require service identity through service_name or resource service.name.", "all spans", {"service_identity_fields": ["service_name", "resource_attributes.service.name"]}, tg_str_005, "Old TG-TEL-009"),
 )
 
 RULE_BY_ID = {rule.rule_id: rule for rule in RULES}

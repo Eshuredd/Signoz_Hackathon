@@ -1,0 +1,280 @@
+{
+  "rules": [
+    {
+      "applicability": "all traces",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-str-001",
+      "evaluation_level": "trace",
+      "expected": {
+        "minimum_span_count": 1
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-STR",
+      "public": true,
+      "purpose": "Require at least one span.",
+      "rule_id": "TG-STR-001",
+      "rule_name": "TRACE_HAS_SPANS",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": "Old TG-TEL-001"
+    },
+    {
+      "applicability": "all spans",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-str-002",
+      "evaluation_level": "trace",
+      "expected": {
+        "required_fields": [
+          "trace_id",
+          "span_id",
+          "span_name"
+        ]
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-STR",
+      "public": true,
+      "purpose": "Require non-empty trace_id, span_id, and span_name.",
+      "rule_id": "TG-STR-002",
+      "rule_name": "REQUIRED_SPAN_IDENTITY",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": "Old TG-TEL-002"
+    },
+    {
+      "applicability": "all traces",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-str-003",
+      "evaluation_level": "trace",
+      "expected": {
+        "all_span_trace_ids_match_enclosing_trace_id": true
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-STR",
+      "public": true,
+      "purpose": "Require every span in one trace object to match the enclosing trace ID.",
+      "rule_id": "TG-STR-003",
+      "rule_name": "TRACE_ID_CONSISTENCY",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": "Old TG-TEL-003"
+    },
+    {
+      "applicability": "all traces",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-str-004",
+      "evaluation_level": "trace",
+      "expected": {
+        "span_ids_unique": true
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-STR",
+      "public": true,
+      "purpose": "Require unique non-empty span IDs inside one trace.",
+      "rule_id": "TG-STR-004",
+      "rule_name": "UNIQUE_SPAN_IDS",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": "Old TG-TEL-004"
+    },
+    {
+      "applicability": "all spans",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-str-005",
+      "evaluation_level": "trace",
+      "expected": {
+        "service_identity_fields": [
+          "service_name",
+          "resource_attributes.service.name"
+        ]
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-STR",
+      "public": true,
+      "purpose": "Require service identity through service_name or resource service.name.",
+      "rule_id": "TG-STR-005",
+      "rule_name": "SERVICE_IDENTITY",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "WARNING",
+      "supersedes": "Old TG-TEL-009"
+    },
+    {
+      "applicability": "trace and run bundles",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-tel-001",
+      "evaluation_level": "trace",
+      "expected": {
+        "root_count": 1,
+        "root_span_name": "agent.run"
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-TEL",
+      "public": true,
+      "purpose": "Require exactly one root span representing the agent execution.",
+      "rule_id": "TG-TEL-001",
+      "rule_name": "AGENT_RUN_ROOT",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": "Old TG-TEL-005"
+    },
+    {
+      "applicability": "trace and run bundles with agent.run root",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-tel-002",
+      "evaluation_level": "trace",
+      "expected": {
+        "required_root_attributes": [
+          "agent.run_id",
+          "agent.name",
+          "agent.status"
+        ]
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-TEL",
+      "public": true,
+      "purpose": "Require canonical agent identity and state attributes.",
+      "rule_id": "TG-TEL-002",
+      "rule_name": "AGENT_RUN_REQUIRED_ATTRIBUTES",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": "Old TG-TEL-010"
+    },
+    {
+      "applicability": "tool spans only",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-tel-003a",
+      "evaluation_level": "trace",
+      "expected": {
+        "parent_chain_terminates_at": "agent.run root"
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-TEL",
+      "public": true,
+      "purpose": "Require every tool span to resolve to the agent.run root.",
+      "rule_id": "TG-TEL-003A",
+      "rule_name": "TOOL_PARENT_CHAIN",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": "Old TG-TEL-006"
+    },
+    {
+      "applicability": "run bundles only",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-tel-003b",
+      "evaluation_level": "run",
+      "expected": {
+        "maximum_trace_count": 1
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-TEL",
+      "public": true,
+      "purpose": "Require one agent execution identified by agent.run_id to remain within one trace.",
+      "rule_id": "TG-TEL-003B",
+      "rule_name": "NO_TRACE_FRAGMENTATION",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": null
+    },
+    {
+      "applicability": "tool spans only",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-tel-004",
+      "evaluation_level": "trace",
+      "expected": {
+        "required_tool_attribute": "tool.status"
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-TEL",
+      "public": true,
+      "purpose": "Require every tool span to contain tool.status.",
+      "rule_id": "TG-TEL-004",
+      "rule_name": "TOOL_STATUS",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": null
+    },
+    {
+      "applicability": "model spans only",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-tel-005",
+      "evaluation_level": "trace",
+      "expected": {
+        "required_model_attribute": "gen_ai.request.model"
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-TEL",
+      "public": true,
+      "purpose": "Require every model invocation span to identify the requested model.",
+      "rule_id": "TG-TEL-005",
+      "rule_name": "MODEL_IDENTITY",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": null
+    },
+    {
+      "applicability": "model spans only",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-tel-006",
+      "evaluation_level": "trace",
+      "expected": {
+        "integer_constraints": "not booleans, zero or greater",
+        "required_token_attributes": [
+          "gen_ai.usage.input_tokens",
+          "gen_ai.usage.output_tokens"
+        ]
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-TEL",
+      "public": true,
+      "purpose": "Require model invocation spans to expose token usage.",
+      "rule_id": "TG-TEL-006",
+      "rule_name": "TOKEN_USAGE",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "WARNING",
+      "supersedes": null
+    },
+    {
+      "applicability": "all spans",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-tel-007",
+      "evaluation_level": "trace",
+      "expected": {
+        "required_fields": [
+          "start_time",
+          "end_time",
+          "duration_nano"
+        ]
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-TEL",
+      "public": true,
+      "purpose": "Require valid and internally consistent span timing.",
+      "rule_id": "TG-TEL-007",
+      "rule_name": "TIMESTAMP_VALIDITY",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "BLOCKING",
+      "supersedes": "Old TG-TEL-007 and TG-TEL-008"
+    },
+    {
+      "applicability": "run bundles with logs",
+      "deterministic": true,
+      "documentation_reference": "gate3/spec/traceguard_telemetry_contract_v1.md#tg-tel-008",
+      "evaluation_level": "run",
+      "expected": {
+        "log_attributes": [
+          "agent.run_id",
+          "trace_id"
+        ]
+      },
+      "expected_evidence": "See canonical specification evidence requirements.",
+      "namespace": "TG-TEL",
+      "public": true,
+      "purpose": "Verify that logs associated with an agent execution can be correlated back to the correct run and trace.",
+      "rule_id": "TG-TEL-008",
+      "rule_name": "LOG_CORRELATION",
+      "ruleset_version": "traceguard-telemetry-v2",
+      "severity": "WARNING",
+      "supersedes": null
+    }
+  ],
+  "ruleset_version": "traceguard-telemetry-v2"
+}

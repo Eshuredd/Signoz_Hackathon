@@ -1,22 +1,29 @@
-"""Gate 3A deterministic telemetry evaluator."""
+"""TraceGuard Gate 3 deterministic telemetry evaluator."""
 
-from .evaluator import evaluate_trace
+from .evaluator import evaluate_run_bundle, evaluate_trace
 from .models import (
     EvaluationResult,
     EvaluationSummary,
-    RuleFinding,
+    RuleResult,
+    RuleStatus,
+    RunBundle,
     Severity,
     Verdict,
 )
-from .trace_loader import TraceInputError, load_trace_file
+from .trace_loader import RunBundleInputError, TraceInputError, load_run_bundle_file, load_trace_file
 
 __all__ = [
     "EvaluationResult",
     "EvaluationSummary",
-    "RuleFinding",
+    "RuleResult",
+    "RuleStatus",
+    "RunBundle",
+    "RunBundleInputError",
     "Severity",
     "TraceInputError",
     "Verdict",
+    "evaluate_run_bundle",
     "evaluate_trace",
+    "load_run_bundle_file",
     "load_trace_file",
 ]

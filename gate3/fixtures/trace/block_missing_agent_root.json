@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "trace": {
+    "metadata": {},
+    "retrieved_at": "2026-07-25T08:00:02Z",
+    "source": "fixture",
+    "spans": [
+      {
+        "attributes": {
+          "tool.status": "success"
+        },
+        "duration_nano": 1000000000,
+        "end_time": "2026-07-25T08:00:01Z",
+        "parent_span_id": "9999999999999999",
+        "resource_attributes": {
+          "service.name": "traceguard-tests"
+        },
+        "service_name": "traceguard-tests",
+        "span_id": "2222222222222222",
+        "span_name": "tool.call",
+        "start_time": "2026-07-25T08:00:00Z",
+        "status": {
+          "status_code": "OK"
+        },
+        "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ],
+    "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

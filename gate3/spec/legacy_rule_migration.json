@@ -1,0 +1,71 @@
+{
+  "migrations": [
+    {
+      "disposition": "TG-STR-001",
+      "old_name": "TRACE_HAS_SPANS",
+      "old_rule_id": "TG-TEL-001"
+    },
+    {
+      "disposition": "TG-STR-002",
+      "old_name": "REQUIRED_SPAN_IDENTITY",
+      "old_rule_id": "TG-TEL-002"
+    },
+    {
+      "disposition": "TG-STR-003",
+      "old_name": "TRACE_ID_CONSISTENCY",
+      "old_rule_id": "TG-TEL-003"
+    },
+    {
+      "disposition": "TG-STR-004",
+      "old_name": "UNIQUE_SPAN_IDS",
+      "old_rule_id": "TG-TEL-004"
+    },
+    {
+      "disposition": "replaced by TG-TEL-001 AGENT_RUN_ROOT",
+      "old_name": "SINGLE_ROOT_SPAN",
+      "old_rule_id": "TG-TEL-005"
+    },
+    {
+      "disposition": "replaced by TG-TEL-003A TOOL_PARENT_CHAIN",
+      "old_name": "PARENT_REFERENCE_INTEGRITY",
+      "old_rule_id": "TG-TEL-006"
+    },
+    {
+      "disposition": "merged into TG-TEL-007 TIMESTAMP_VALIDITY",
+      "old_name": "REQUIRED_TIMING_FIELDS",
+      "old_rule_id": "TG-TEL-007"
+    },
+    {
+      "disposition": "merged into TG-TEL-007 TIMESTAMP_VALIDITY",
+      "old_name": "VALID_TIMING_ORDER",
+      "old_rule_id": "TG-TEL-008"
+    },
+    {
+      "disposition": "TG-STR-005",
+      "old_name": "SERVICE_IDENTITY",
+      "old_rule_id": "TG-TEL-009"
+    },
+    {
+      "disposition": "incorporated into TG-TEL-002",
+      "old_name": "AGENT_RUN_CORRELATION",
+      "old_rule_id": "TG-TEL-010"
+    },
+    {
+      "disposition": "retired as unapproved requirement",
+      "old_name": "TRACEGUARD_RUN_CORRELATION",
+      "old_rule_id": "TG-TEL-011"
+    },
+    {
+      "disposition": "retired as unsupported assumption",
+      "old_name": "RUN_ID_CONSISTENCY",
+      "old_rule_id": "TG-TEL-012"
+    },
+    {
+      "disposition": "retired as unapproved evaluator requirement",
+      "old_name": "TRACEGUARD_CONTEXT",
+      "old_rule_id": "TG-TEL-013"
+    }
+  ],
+  "note": "Old Gate 3A rule IDs were not stable and are superseded. Canonical meanings now follow traceguard-telemetry-v2; historical evidence remains in Git history; new reports must use the corrected ruleset.",
+  "schema_version": 1
+}

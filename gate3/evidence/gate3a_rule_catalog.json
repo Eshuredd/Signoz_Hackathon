@@ -1,19 +1,100 @@
 {
-  "ruleset_version": "tg-tel-v1",
   "rule_count": 13,
   "rules": [
-    {"rule_id": "TG-TEL-001", "name": "TRACE_HAS_SPANS", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
-    {"rule_id": "TG-TEL-002", "name": "REQUIRED_SPAN_IDENTITY", "severity": "BLOCKING", "scope": "span", "deterministic": true},
-    {"rule_id": "TG-TEL-003", "name": "TRACE_ID_CONSISTENCY", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
-    {"rule_id": "TG-TEL-004", "name": "UNIQUE_SPAN_IDS", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
-    {"rule_id": "TG-TEL-005", "name": "SINGLE_ROOT_SPAN", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
-    {"rule_id": "TG-TEL-006", "name": "PARENT_REFERENCE_INTEGRITY", "severity": "BLOCKING", "scope": "span", "deterministic": true},
-    {"rule_id": "TG-TEL-007", "name": "REQUIRED_TIMING_FIELDS", "severity": "BLOCKING", "scope": "span", "deterministic": true},
-    {"rule_id": "TG-TEL-008", "name": "VALID_TIMING_ORDER", "severity": "BLOCKING", "scope": "span", "deterministic": true},
-    {"rule_id": "TG-TEL-009", "name": "SERVICE_IDENTITY", "severity": "WARNING", "scope": "span", "deterministic": true},
-    {"rule_id": "TG-TEL-010", "name": "AGENT_RUN_CORRELATION", "severity": "BLOCKING", "scope": "root", "deterministic": true},
-    {"rule_id": "TG-TEL-011", "name": "TRACEGUARD_RUN_CORRELATION", "severity": "WARNING", "scope": "root", "deterministic": true},
-    {"rule_id": "TG-TEL-012", "name": "RUN_ID_CONSISTENCY", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
-    {"rule_id": "TG-TEL-013", "name": "TRACEGUARD_CONTEXT", "severity": "WARNING", "scope": "root", "deterministic": true}
-  ]
+    {
+      "deterministic": true,
+      "name": "TRACE_HAS_SPANS",
+      "rule_id": "TG-TEL-001",
+      "scope": "trace",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "REQUIRED_SPAN_IDENTITY",
+      "rule_id": "TG-TEL-002",
+      "scope": "span",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "TRACE_ID_CONSISTENCY",
+      "rule_id": "TG-TEL-003",
+      "scope": "trace",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "UNIQUE_SPAN_IDS",
+      "rule_id": "TG-TEL-004",
+      "scope": "trace",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "SINGLE_ROOT_SPAN",
+      "rule_id": "TG-TEL-005",
+      "scope": "trace",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "PARENT_REFERENCE_INTEGRITY",
+      "rule_id": "TG-TEL-006",
+      "scope": "span",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "REQUIRED_TIMING_FIELDS",
+      "rule_id": "TG-TEL-007",
+      "scope": "span",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "VALID_TIMING_ORDER",
+      "rule_id": "TG-TEL-008",
+      "scope": "span",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "SERVICE_IDENTITY",
+      "rule_id": "TG-TEL-009",
+      "scope": "span",
+      "severity": "WARNING"
+    },
+    {
+      "deterministic": true,
+      "name": "AGENT_RUN_CORRELATION",
+      "rule_id": "TG-TEL-010",
+      "scope": "root",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "TRACEGUARD_RUN_CORRELATION",
+      "rule_id": "TG-TEL-011",
+      "scope": "root",
+      "severity": "WARNING"
+    },
+    {
+      "deterministic": true,
+      "name": "RUN_ID_CONSISTENCY",
+      "rule_id": "TG-TEL-012",
+      "scope": "trace",
+      "severity": "BLOCKING"
+    },
+    {
+      "deterministic": true,
+      "name": "TRACEGUARD_CONTEXT",
+      "rule_id": "TG-TEL-013",
+      "scope": "root",
+      "severity": "WARNING"
+    }
+  ],
+  "ruleset_version": "tg-tel-v1",
+  "superseded": true,
+  "superseded_by": "traceguard-telemetry-v2",
+  "superseded_reason": "canonical rule-ID realignment"
 }

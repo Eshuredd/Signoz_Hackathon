@@ -1,0 +1,51 @@
+{
+  "canonical_rule_ids_restored": [
+    "TG-TEL-001",
+    "TG-TEL-002",
+    "TG-TEL-003A",
+    "TG-TEL-003B",
+    "TG-TEL-004",
+    "TG-TEL-005",
+    "TG-TEL-006",
+    "TG-TEL-007",
+    "TG-TEL-008"
+  ],
+  "captured_at": "2026-07-25T15:14:19.327043Z",
+  "contract_realign_complete": false,
+  "corrected_ruleset_version": "traceguard-telemetry-v2",
+  "explicit_per_rule_results": true,
+  "fixture_count": 24,
+  "fixture_migration_complete": true,
+  "live_preflight": {
+    "blocker": "SigNoz Trace API and OTLP collector endpoints refused connections; retrieval and attribute preservation not proven.",
+    "exit_code": 1,
+    "incomplete_trace_id": "6afc56584a772321c62410a4ba4325e2",
+    "valid_trace_id": "a6d8ed7fb1b7ae6063bcf1d363664516"
+  },
+  "next_action": "Restore local SigNoz and OTLP collector availability, rerun gate3_preflight/main.py, and only then mark contract realignment complete.",
+  "previous_ruleset_version": "tg-tel-v1",
+  "public_verdict_contract_restored": true,
+  "sanitized": true,
+  "schema_versions_separated": true,
+  "structural_rules_reassigned": [
+    "TG-STR-001",
+    "TG-STR-002",
+    "TG-STR-003",
+    "TG-STR-004",
+    "TG-STR-005"
+  ],
+  "test_results": {
+    "compileall": "passed",
+    "evaluate_all": "passed",
+    "full_suite": "173 passed",
+    "gate1": "7 passed",
+    "gate2": "102 passed",
+    "gate3": "45 passed",
+    "gate3_preflight_offline": "4 passed",
+    "pip_check": "passed",
+    "runtime": "15 passed",
+    "validate_fixtures": "passed"
+  },
+  "trace_and_run_evaluation_separated": true,
+  "unapproved_traceguard_requirements_removed": true
+}

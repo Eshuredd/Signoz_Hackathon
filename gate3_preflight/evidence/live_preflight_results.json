@@ -1,0 +1,67 @@
+{
+  "SigNoz_version": "unavailable - Trace API connection failed",
+  "authoritative_source": "SigNoz Trace API",
+  "blocker": "SigNoz Trace API http://localhost:8080/api/v5/query_range and OTLP endpoint http://localhost:4318/v1/traces were unavailable/refused connections during live preflight.",
+  "canonical_attribute_preservation": "not proven - retrieval failed",
+  "captured_at": "2026-07-25T15:14:19.324733Z",
+  "contract_realign_complete": false,
+  "expected_exit_code": 0,
+  "incomplete_scenario": {
+    "emitted_span_ids": {
+      "agent.run": "832b8c4eb36ddf05",
+      "model.call": "e05066b9a4723e4d",
+      "tool.call": "f1dbe1f15c5426a2"
+    },
+    "emitted_trace_id": "6afc56584a772321c62410a4ba4325e2",
+    "error_type": "ConnectionFailure",
+    "message": "Could not connect to http://localhost:8080/api/v5/query_range."
+  },
+  "live_command_exit_code": 1,
+  "parent_child_preservation": "not proven - retrieval failed",
+  "result": {
+    "batch_id": "20260725T151232Z",
+    "config": {
+      "SIGNOZ_API_KEY": "<set>",
+      "SIGNOZ_BASE_URL": "http://localhost:8080",
+      "SIGNOZ_REQUEST_TIMEOUT_SECONDS": 10.0,
+      "TRACEGUARD_OTLP_ENDPOINT": "http://localhost:4318/v1/traces",
+      "TRACEGUARD_PREFLIGHT_POLL_INTERVAL_SECONDS": 2.0,
+      "TRACEGUARD_PREFLIGHT_POLL_TIMEOUT_SECONDS": 60.0,
+      "TRACEGUARD_PREFLIGHT_SERVICE_NAME": "traceguard-gate3-preflight"
+    },
+    "sanitized": true,
+    "scenarios": {
+      "canonical_incomplete": {
+        "emitted_span_ids": {
+          "agent.run": "832b8c4eb36ddf05",
+          "model.call": "e05066b9a4723e4d",
+          "tool.call": "f1dbe1f15c5426a2"
+        },
+        "emitted_trace_id": "6afc56584a772321c62410a4ba4325e2",
+        "error_type": "ConnectionFailure",
+        "message": "Could not connect to http://localhost:8080/api/v5/query_range."
+      },
+      "canonical_valid": {
+        "emitted_span_ids": {
+          "agent.run": "39843da4b597ab6f",
+          "model.call": "7cc1bfab6fa495f7",
+          "tool.call": "489c670d9aeab571"
+        },
+        "emitted_trace_id": "a6d8ed7fb1b7ae6063bcf1d363664516",
+        "error_type": "ConnectionFailure",
+        "message": "Could not connect to http://localhost:8080/api/v5/query_range."
+      }
+    }
+  },
+  "sanitized": true,
+  "valid_scenario": {
+    "emitted_span_ids": {
+      "agent.run": "39843da4b597ab6f",
+      "model.call": "7cc1bfab6fa495f7",
+      "tool.call": "489c670d9aeab571"
+    },
+    "emitted_trace_id": "a6d8ed7fb1b7ae6063bcf1d363664516",
+    "error_type": "ConnectionFailure",
+    "message": "Could not connect to http://localhost:8080/api/v5/query_range."
+  }
+}
