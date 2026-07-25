@@ -1,6 +1,6 @@
 {
   "basis": "Live authenticated Trace API attempt on 2026-07-25 using Gate 2 manifest fallback",
-  "captured_at": "2026-07-25T07:12:25Z",
+  "captured_at": "2026-07-25T07:28:17Z",
   "deterministic_evaluation": "not observed",
   "expected_gate1a_attributes": [
     "agent.run_id",

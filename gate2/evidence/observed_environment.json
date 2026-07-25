@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-07-25T07:12:25Z",
+  "captured_at": "2026-07-25T07:28:17Z",
   "configuration": {
     "SIGNOZ_API_KEY": "<set>",
     "SIGNOZ_BASE_URL": "http://localhost:8080",
@@ -28,8 +28,8 @@
   "live_ids": {
     "gate1a_first_successful_agent_run_id": "8848eb4c-c23a-44fd-ab7e-f23958c4bd77",
     "gate1a_first_successful_trace_id": "2fed5f0ffbd62b3be751af910e89c5e0",
-    "gate1a_latest_agent_run_id": "d01d1dc1-9a3a-4a8b-9892-398af55d81c4",
-    "gate1a_latest_trace_id": "d6d7aa09c6940b2efff3b75cee7522d1",
+    "gate1a_latest_agent_run_id": "b777c572-9a86-41b6-80df-006e1f7bdff1",
+    "gate1a_latest_trace_id": "8f33780518edab055f88e9a0b4be27a3",
     "manifest_replaced_by_second_successful_run": true,
     "relationship_child_parent_span_id": "07fb3ad378ac9998",
     "relationship_child_span_id": "cac3067162644836",
@@ -38,7 +38,7 @@
     "relationship_run_id": "gate2-b777ae46-5bfa-45af-9a9b-eeaa244b87f7",
     "relationship_trace_id": "020ad9603fcc933b4769fe2c3efc8466"
   },
-  "local_ingestion_note": "The repository compose ingester was initially replaced by OpAMP with nop pipelines because SigNoz setupCompleted=false. For Gate 1 live proof, the same collector image was run locally with the committed static collector config and without OpAMP manager config.",
+  "local_ingestion_note": "The repository compose ingester was initially replaced by OpAMP with nop pipelines before local SigNoz setup was completed. For Gate 1 live proof, the same collector image was run locally with the committed static collector config and without OpAMP manager config.",
   "mcp": {
     "container": "signoz-mcp",
     "docker_health_note": "Container healthcheck is unhealthy, but external /livez returned ok, so this is not classified as an MCP protocol failure.",
@@ -53,7 +53,7 @@
     "base_url": "http://localhost:8080",
     "enterprise": "Y",
     "health": "ok",
-    "setup_completed": false,
+    "setup_completed": true,
     "version": "v0.134.0"
   },
   "test_result": {

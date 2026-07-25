@@ -50,7 +50,7 @@ Observed live state:
 - Docker daemon available: yes
 - Docker client/server: `28.4.0`
 - Docker Compose: `v2.39.4-desktop.1`
-- SigNoz: `v0.134.0`, `ee=Y`, `setupCompleted=false`
+- SigNoz: `v0.134.0`, `ee=Y`, `setupCompleted=true`
 - MCP image: `signoz/signoz-mcp-server:latest`
 - MCP server version from logs: `main-f6086b3`
 - MCP `/livez`: `ok`
@@ -108,11 +108,11 @@ Gate 1A generated:
 ```text
 first successful run_id=8848eb4c-c23a-44fd-ab7e-f23958c4bd77
 first successful trace_id=2fed5f0ffbd62b3be751af910e89c5e0
-latest run_id=d01d1dc1-9a3a-4a8b-9892-398af55d81c4
-latest trace_id=d6d7aa09c6940b2efff3b75cee7522d1
+latest run_id=b777c572-9a86-41b6-80df-006e1f7bdff1
+latest trace_id=8f33780518edab055f88e9a0b4be27a3
 ```
 
-The second successful Gate 1 run replaced `.traceguard/runtime/latest_gate1.json`, and Gate 2 loaded the second run with `trace_context_source=manifest`.
+The latest successful Gate 1 run replaced `.traceguard/runtime/latest_gate1.json`, and Gate 2 loaded that run with `trace_context_source=manifest`.
 
 Relationship fixture generated:
 

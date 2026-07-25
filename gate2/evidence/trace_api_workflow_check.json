@@ -5,7 +5,7 @@
   },
   "authentication_required": "observed",
   "authentication_result": "SIGNOZ_API_KEY <set>; request rejected as unauthenticated; no secret value printed",
-  "captured_at": "2026-07-25T07:12:25Z",
+  "captured_at": "2026-07-25T07:28:17Z",
   "direct_lookup": {
     "reason": "Authenticated request returned AuthenticationFailure: unauthenticated.",
     "status": "failed"
@@ -18,8 +18,8 @@
   ],
   "health": "ok",
   "live_ids_available": {
-    "agent_run_id": "d01d1dc1-9a3a-4a8b-9892-398af55d81c4",
-    "trace_id": "d6d7aa09c6940b2efff3b75cee7522d1"
+    "agent_run_id": "b777c572-9a86-41b6-80df-006e1f7bdff1",
+    "trace_id": "8f33780518edab055f88e9a0b4be27a3"
   },
   "manifest_fallback": {
     "manifest_path": ".traceguard/runtime/latest_gate1.json",
@@ -27,7 +27,7 @@
   },
   "retrieval_workflow_completeness": "not observed",
   "sanitized": true,
-  "smallest_next_action": "Complete local SigNoz setup and replace SIGNOZ_API_KEY with a valid service-account key for this localhost instance, then rerun python gate2/signoz_api_client.py.",
+  "smallest_next_action": "Replace SIGNOZ_API_KEY with a valid service-account key for this localhost instance, then rerun python gate2/signoz_api_client.py.",
   "source": "SigNoz Trace API",
   "version": "v0.134.0"
 }

@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-07-25T07:12:25Z",
+  "captured_at": "2026-07-25T07:28:17Z",
   "decision": "HYBRID_REQUIRES_MORE_EVIDENCE",
   "exit_code_policy": {
     "0": "Both interfaces were meaningfully tested and a final evidence-based source decision was produced.",
@@ -11,9 +11,9 @@
   "gate2_fully_complete": false,
   "mcp_blocker": "MCP health, initialize, initialized notification, and tools/list succeeded, but trace tool calls returned upstream unauthenticated responses from SigNoz.",
   "provisional_evaluator_source": "none",
-  "reason": "Gate 2 loaded the latest Gate 1 manifest and attempted live authenticated retrieval. SigNoz health/version succeeded, but Trace API direct lookup and agent.run_id search were rejected as unauthenticated. MCP tool discovery succeeded, but trace details/search calls also returned upstream unauthenticated responses.",
+  "reason": "Gate 2 loaded the latest Gate 1 manifest and attempted live authenticated retrieval. SigNoz health/version succeeded and setupCompleted=true, but Trace API direct lookup, agent.run_id search, and the service-account self-check were rejected as unauthenticated. MCP tool discovery succeeded, but trace details/search calls also returned upstream unauthenticated responses.",
   "sanitized": true,
-  "smallest_next_action": "Complete local SigNoz setup and replace SIGNOZ_API_KEY with a valid service-account key for this localhost instance, then rerun python gate2/main.py.",
+  "smallest_next_action": "Replace SIGNOZ_API_KEY with a valid service-account key for this localhost instance, then rerun python gate2/main.py.",
   "test_result": {
     "full_suite": {
       "command": ".\\.venv\\Scripts\\python.exe -m pytest -v --basetemp .test-tmp-all -p no:cacheprovider",
@@ -56,5 +56,5 @@
       "warnings": 0
     }
   },
-  "trace_api_blocker": "SIGNOZ_API_KEY was present but rejected by localhost SigNoz as unauthenticated; local SigNoz setupCompleted=false."
+  "trace_api_blocker": "SIGNOZ_API_KEY was present but rejected by localhost SigNoz as unauthenticated, including /api/v1/service_accounts/me with the documented SIGNOZ-API-KEY header."
 }
