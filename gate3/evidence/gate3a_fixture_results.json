@@ -1,0 +1,12 @@
+{
+  "evaluator_version": "0.1.0",
+  "ruleset_version": "tg-tel-v1",
+  "fixture_count": 18,
+  "pass_fixture_count": 2,
+  "warn_fixture_count": 4,
+  "block_fixture_count": 12,
+  "fixture_expectation_matches": true,
+  "failed_fixture_expectations": [],
+  "test_result": "tests/gate3: 58 passed; full suite: 182 passed; validate-fixtures: exit 0; evaluate-all: exit 0",
+  "captured_at": "2026-07-25T09:30:00Z"
+}

@@ -1,0 +1,19 @@
+{
+  "ruleset_version": "tg-tel-v1",
+  "rule_count": 13,
+  "rules": [
+    {"rule_id": "TG-TEL-001", "name": "TRACE_HAS_SPANS", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
+    {"rule_id": "TG-TEL-002", "name": "REQUIRED_SPAN_IDENTITY", "severity": "BLOCKING", "scope": "span", "deterministic": true},
+    {"rule_id": "TG-TEL-003", "name": "TRACE_ID_CONSISTENCY", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
+    {"rule_id": "TG-TEL-004", "name": "UNIQUE_SPAN_IDS", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
+    {"rule_id": "TG-TEL-005", "name": "SINGLE_ROOT_SPAN", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
+    {"rule_id": "TG-TEL-006", "name": "PARENT_REFERENCE_INTEGRITY", "severity": "BLOCKING", "scope": "span", "deterministic": true},
+    {"rule_id": "TG-TEL-007", "name": "REQUIRED_TIMING_FIELDS", "severity": "BLOCKING", "scope": "span", "deterministic": true},
+    {"rule_id": "TG-TEL-008", "name": "VALID_TIMING_ORDER", "severity": "BLOCKING", "scope": "span", "deterministic": true},
+    {"rule_id": "TG-TEL-009", "name": "SERVICE_IDENTITY", "severity": "WARNING", "scope": "span", "deterministic": true},
+    {"rule_id": "TG-TEL-010", "name": "AGENT_RUN_CORRELATION", "severity": "BLOCKING", "scope": "root", "deterministic": true},
+    {"rule_id": "TG-TEL-011", "name": "TRACEGUARD_RUN_CORRELATION", "severity": "WARNING", "scope": "root", "deterministic": true},
+    {"rule_id": "TG-TEL-012", "name": "RUN_ID_CONSISTENCY", "severity": "BLOCKING", "scope": "trace", "deterministic": true},
+    {"rule_id": "TG-TEL-013", "name": "TRACEGUARD_CONTEXT", "severity": "WARNING", "scope": "root", "deterministic": true}
+  ]
+}

@@ -23,6 +23,8 @@ Authoritative evaluator source for this run: `SigNoz Trace API`.
 
 Gate 2 is complete for this phase: Trace API is the authoritative retrieval source, while MCP is meaningfully tested but incomplete for evaluator-grade telemetry.
 
+Next stage: see `gate3/README.md` for the offline deterministic Gate 3A telemetry-completeness evaluator.
+
 ## Live Commands
 
 Docker and Foundry:
