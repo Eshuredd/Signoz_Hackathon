@@ -9,6 +9,7 @@ from typing import Any
 
 EVALUATOR_VERSION = "0.1.0"
 RULESET_VERSION = "tg-tel-v1"
+SUPPORTED_INPUT_SCHEMA_VERSION = 1
 
 
 class Verdict(str, Enum):
@@ -163,6 +164,10 @@ def stable_value(value: Any) -> Any:
 
 def is_valid_integer(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+def is_supported_schema_version(value: object) -> bool:
+    return is_valid_integer(value) and value == SUPPORTED_INPUT_SCHEMA_VERSION
 
 
 def verdict_from_findings(findings: list[RuleFinding] | tuple[RuleFinding, ...]) -> Verdict:

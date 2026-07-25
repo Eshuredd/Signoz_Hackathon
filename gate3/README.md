@@ -23,7 +23,7 @@ Gate 3A consumes a versioned envelope:
 }
 ```
 
-Malformed JSON or schema-invalid envelopes raise `TraceInputError`. That is not the same as incomplete telemetry. A valid trace with missing span fields can produce `WARN` or `BLOCK` findings; malformed input is rejected before evaluation so it is not disguised as a telemetry verdict. `duration_nano` must be a real JSON integer; booleans, floats, and numeric-looking strings are rejected rather than coerced.
+Malformed JSON or schema-invalid envelopes raise `TraceInputError`. That is not the same as incomplete telemetry. A valid trace with missing span fields can produce `WARN` or `BLOCK` findings; malformed input is rejected before evaluation so it is not disguised as a telemetry verdict. `schema_version` and `duration_nano` must be real JSON integers; booleans, floating-point values, strings, null, arrays, and objects are rejected rather than coerced.
 
 ## Verdicts
 

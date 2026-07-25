@@ -8,6 +8,7 @@
   "fixture_expectation_matches": true,
   "failed_fixture_expectations": [],
   "strict_expectation_json": true,
+  "strict_schema_version_type": true,
   "boolean_duration_rejected": true,
   "network_access_denied_in_tests": true,
   "forbidden_network_import_scan_passed": true,
@@ -15,6 +16,6 @@
   "deterministic_result": true,
   "fixture_validation_result": "exit 0",
   "evaluate_all_result": "exit 0",
-  "test_result": "tests/gate3: 72 passed; tests/gate2: 102 passed; full suite: 196 passed; validate-fixtures: exit 0; evaluate-all: exit 0",
-  "captured_at": "2026-07-25T10:15:00Z"
+  "test_result": "tests/gate3: 99 passed; tests/gate2: 102 passed; full suite: 223 passed; validate-fixtures: exit 0; evaluate-all: exit 0",
+  "captured_at": "2026-07-25T10:45:00Z"
 }

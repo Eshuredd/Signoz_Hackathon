@@ -18,6 +18,13 @@ def test_valid_fixture_loads() -> None:
     assert trace.spans[0].span_id == "1111111111111111"
 
 
+def test_schema_version_one_loads_as_real_integer() -> None:
+    trace = load_trace_payload({"schema_version": 1, "trace": {"trace_id": "a" * 32, "spans": []}})
+
+    assert trace.schema_version == 1
+    assert type(trace.schema_version) is int
+
+
 def test_missing_file_fails_clearly(tmp_path: Path) -> None:
     with pytest.raises(TraceInputError, match="Unable to read"):
         load_trace_file(tmp_path / "missing.json")
@@ -48,6 +55,20 @@ def test_invalid_json_fails_clearly(tmp_path: Path) -> None:
 def test_loader_contract_errors(payload: object, match: str) -> None:
     with pytest.raises(TraceInputError, match=match):
         load_trace_payload(payload)
+
+
+@pytest.mark.parametrize("schema_version", [True, False, 1.0, "1", None, [], {}])
+def test_trace_schema_version_rejects_invalid_types(schema_version: object) -> None:
+    with pytest.raises(TraceInputError, match="schema_version must be an integer") as exc_info:
+        load_trace_payload({"schema_version": schema_version, "trace": {"spans": []}})
+
+    assert "Unsupported trace input schema_version: 1" not in str(exc_info.value)
+
+
+@pytest.mark.parametrize("schema_version", [-1, 0, 2, 999])
+def test_trace_schema_version_rejects_unsupported_integer_values(schema_version: int) -> None:
+    with pytest.raises(TraceInputError, match=f"Unsupported trace input schema_version: {schema_version}"):
+        load_trace_payload({"schema_version": schema_version, "trace": {"spans": []}})
 
 
 def test_non_object_span_from_file_fails(tmp_path: Path) -> None:

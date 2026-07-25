@@ -148,6 +148,51 @@ def test_expectation_manifest_rejects_duplicate_rule_id_values(tmp_path: Path) -
         load_expectations(fixtures_dir, manifest_path)
 
 
+@pytest.mark.parametrize(
+    "schema_version_json",
+    ["true", "false", "1.0", '"1"', "null", "[]", "{}"],
+)
+def test_expectation_manifest_rejects_schema_version_invalid_types(
+    tmp_path: Path,
+    schema_version_json: str,
+) -> None:
+    fixtures_dir = one_fixture_dir(tmp_path)
+    manifest_path = write_manifest(
+        tmp_path / "expectations.json",
+        f"""
+        {{
+          "schema_version": {schema_version_json},
+          "fixtures": {{}}
+        }}
+        """,
+    )
+
+    with pytest.raises(ExpectationError, match="schema_version must be an integer") as exc_info:
+        load_expectations(fixtures_dir, manifest_path)
+
+    assert "Unsupported expectation manifest schema_version: 1" not in str(exc_info.value)
+
+
+@pytest.mark.parametrize("schema_version", [-1, 0, 2, 999])
+def test_expectation_manifest_rejects_unsupported_integer_schema_versions(
+    tmp_path: Path,
+    schema_version: int,
+) -> None:
+    fixtures_dir = one_fixture_dir(tmp_path)
+    manifest_path = write_manifest(
+        tmp_path / "expectations.json",
+        f"""
+        {{
+          "schema_version": {schema_version},
+          "fixtures": {{}}
+        }}
+        """,
+    )
+
+    with pytest.raises(ExpectationError, match=f"Unsupported expectation manifest schema_version: {schema_version}"):
+        load_expectations(fixtures_dir, manifest_path)
+
+
 def test_normal_expectation_manifest_still_loads() -> None:
     expectations = load_expectations(FIXTURES_DIR, EXPECTATION_PATH)
 

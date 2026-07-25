@@ -9,12 +9,12 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from gate3.evaluator import EvaluatorInternalError, evaluate_trace
-    from gate3.models import Verdict
+    from gate3.models import SUPPORTED_INPUT_SCHEMA_VERSION, Verdict, is_valid_integer
     from gate3.rules import RULE_BY_ID
     from gate3.trace_loader import TraceInputError, load_trace_file
 else:
     from .evaluator import EvaluatorInternalError, evaluate_trace
-    from .models import Verdict
+    from .models import SUPPORTED_INPUT_SCHEMA_VERSION, Verdict, is_valid_integer
     from .rules import RULE_BY_ID
     from .trace_loader import TraceInputError, load_trace_file
 
@@ -135,8 +135,13 @@ def load_expectations(fixtures_dir: Path, expectations_path: Path) -> dict[str, 
         raise ExpectationError(str(exc)) from exc
     except json.JSONDecodeError as exc:
         raise ExpectationError(f"Invalid JSON in expectation manifest: {expectations_path}") from exc
-    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+    if not isinstance(payload, dict):
         raise ExpectationError("Expectation manifest must be an object with schema_version=1.")
+    schema_version = payload.get("schema_version")
+    if not is_valid_integer(schema_version):
+        raise ExpectationError("Expectation manifest schema_version must be an integer.")
+    if schema_version != SUPPORTED_INPUT_SCHEMA_VERSION:
+        raise ExpectationError(f"Unsupported expectation manifest schema_version: {schema_version!r}.")
     fixtures = payload.get("fixtures")
     if not isinstance(fixtures, dict):
         raise ExpectationError("Expectation manifest must contain a fixtures object.")

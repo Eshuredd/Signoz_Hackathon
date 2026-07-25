@@ -6,12 +6,11 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from .models import NormalizedTrace, Span, is_valid_integer
+    from .models import SUPPORTED_INPUT_SCHEMA_VERSION, NormalizedTrace, Span, is_valid_integer
 except ImportError:  # pragma: no cover - supports direct script imports.
-    from models import NormalizedTrace, Span, is_valid_integer
+    from models import SUPPORTED_INPUT_SCHEMA_VERSION, NormalizedTrace, Span, is_valid_integer
 
 
-SUPPORTED_SCHEMA_VERSIONS = {1}
 STRING_FIELDS = ("trace_id", "span_id", "span_name", "start_time", "end_time", "service_name")
 
 
@@ -37,7 +36,9 @@ def load_trace_payload(payload: Any) -> NormalizedTrace:
     if not isinstance(payload, dict):
         raise TraceInputError("Trace input top-level value must be an object.")
     schema_version = payload.get("schema_version")
-    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+    if not is_valid_integer(schema_version):
+        raise TraceInputError("Trace input schema_version must be an integer.")
+    if schema_version != SUPPORTED_INPUT_SCHEMA_VERSION:
         raise TraceInputError(f"Unsupported trace input schema_version: {schema_version!r}.")
     trace = payload.get("trace")
     if not isinstance(trace, dict):

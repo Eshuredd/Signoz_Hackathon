@@ -116,6 +116,33 @@ def duplicate_key_manifest(tmp_path: Path) -> Path:
     return manifest
 
 
+@pytest.mark.parametrize("schema_version_json", ["true", "1.0"])
+@pytest.mark.parametrize("command", ["validate-fixtures", "evaluate-all"])
+def test_fixture_manifest_schema_version_type_errors_return_2(
+    tmp_path: Path,
+    command: str,
+    schema_version_json: str,
+) -> None:
+    manifest = tmp_path / "expectations.json"
+    manifest.write_text(
+        f"""
+        {{
+          "schema_version": {schema_version_json},
+          "fixtures": {{}}
+        }}
+        """,
+        encoding="utf-8",
+    )
+
+    completed = run_cli(command, "gate3/fixtures", "--expectations", str(manifest))
+
+    assert completed.returncode == 2
+    assert completed.stderr == ""
+    output = json.loads(completed.stdout)
+    assert output["error_type"] == "ExpectationError"
+    assert "schema_version" in output["message"]
+
+
 def test_gate3_production_code_has_no_forbidden_network_imports() -> None:
     violations: list[str] = []
     for path in sorted((REPO_ROOT / "gate3").rglob("*.py")):
