@@ -8,7 +8,7 @@ from typing import Callable
 from uuid import uuid4
 
 from gate3.evaluator import evaluate_run_bundle
-from gate3.models import EvaluationLevel, RULESET_VERSION
+from gate3.models import EvaluationLevel
 from gate3.rules import RULE_BY_ID
 from gate3.trace_loader import load_run_bundle_payload
 
@@ -67,8 +67,7 @@ def run_gate3b(
         summary["environment_check"] = env.to_dict()
         writer(runtime / "environment_check.json", env.to_dict())
         writer(runtime / "scenario_catalog.json", scenario_catalogue())
-        writer(Path("gate3b") / "evidence" / "gate3b_scenario_catalog.json", scenario_catalogue())
-        writer(Path("gate3b") / "evidence" / "gate3b_log_api_contract.json", log_api_contract(env.signoz_version))
+        writer(runtime / "log_api_contract.json", log_api_contract(env.signoz_version))
     except KNOWN_INFRA as exc:
         return _finish(runtime, summary, 3, "environment_check", exc, writer)
     except Exception as exc:
@@ -183,7 +182,6 @@ def run_gate3b(
         writer(runtime / "trace_emission_manifest.json", trace_manifest)
         writer(runtime / "log_emission_manifest.json", log_manifest)
         writer(runtime / "gate3b_summary.json", summary)
-        _write_evidence(summary, env, exit_code, writer)
     except Exception as exc:
         return _finish(runtime, summary, 4, "artifact_writing", exc, writer)
     print(json.dumps(summary, indent=2, sort_keys=True, default=str))
@@ -205,54 +203,6 @@ def run_environment_check(config: Gate3BConfig, client: object) -> EnvironmentCh
         log_otlp_endpoint=config.log_otlp_endpoint,
         checked_at=now_iso(),
     )
-
-
-def _write_evidence(summary: dict[str, object], env: EnvironmentCheckResult, exit_code: int, writer: Callable[[Path, dict[str, object]], None]) -> None:
-    scenarios = summary.get("scenarios", {})
-    gate3b_complete = exit_code == 0 and bool(summary.get("all_expectations_matched")) and len(scenarios) == 4
-    writer(Path("gate3b") / "evidence" / "gate3b_live_results.json", {
-        "captured_at": summary.get("captured_at"),
-        "runtime_batch_id": summary.get("batch_id"),
-        "docker_status": "not captured by Gate 3B runner",
-        "signoz_health": env.health_ok,
-        "signoz_version": env.signoz_version,
-        "authenticated_trace_api_result": env.authenticated_trace_api_access,
-        "authenticated_log_api_result": env.authenticated_log_api_access,
-        "trace_otlp_endpoint": env.trace_otlp_endpoint,
-        "log_otlp_endpoint": env.log_otlp_endpoint,
-        "authoritative_sources": {"trace": AUTHORITATIVE_TRACE_SOURCE, "log": AUTHORITATIVE_LOG_SOURCE},
-        "scenario_count": summary.get("scenario_count"),
-        "completed_count": summary.get("completed_count"),
-        "matched_count": summary.get("matched_count"),
-        "failed_count": summary.get("failed_count"),
-        "all_expectations_matched": summary.get("all_expectations_matched"),
-        "scenarios": scenarios,
-        "offline_test_results": "recorded in completion report",
-        "live_command_exit_code": exit_code,
-        "secret_scan_result": "pending" if not gate3b_complete else "passed",
-        "sanitized": True,
-    })
-    writer(Path("gate3b") / "evidence" / "gate3b_decision.json", {
-        "gate": "3B",
-        "gate3b_complete": gate3b_complete,
-        "ruleset_version": RULESET_VERSION,
-        "authoritative_trace_source": AUTHORITATIVE_TRACE_SOURCE,
-        "authoritative_log_source": AUTHORITATIVE_LOG_SOURCE,
-        "trace_otlp_export_verified": gate3b_complete,
-        "log_otlp_export_verified": gate3b_complete,
-        "trace_retrieval_verified": gate3b_complete,
-        "log_retrieval_verified": gate3b_complete,
-        "run_bundle_validation_verified": gate3b_complete,
-        "tg_tel_003b_live_verified": gate3b_complete,
-        "tg_tel_008_live_verified": gate3b_complete,
-        "exact_status_maps_verified": gate3b_complete,
-        "all_scenarios_matched": gate3b_complete,
-        "scenario_count": summary.get("scenario_count"),
-        "live_exit_code": exit_code,
-        "test_results": "recorded in completion report",
-        "next_action": "Begin TG-AGT v1 agent-behaviour rules using controlled agent execution scenarios, while requiring traceguard-telemetry-v2 to pass as the mandatory telemetry-quality precondition.",
-        "sanitized": True,
-    })
 
 
 def _finish(runtime: Path, summary: dict[str, object], code: int, stage: str, exc: Exception, writer: Callable[[Path, dict[str, object]], None]) -> int:
@@ -278,4 +228,3 @@ def sanitize_message(exc: Exception) -> str:
         if marker.lower() in text.lower():
             return "sanitized error message withheld"
     return text
-

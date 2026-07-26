@@ -157,6 +157,15 @@ class SigNozAPIClient:
         )
         return hits, response_json
 
+    def query_range(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Execute the authenticated SigNoz v5 query_range API.
+
+        Gate 3B uses this focused public method for logs so it can reuse Gate 2
+        auth, timeout, and error mapping without reaching into private client
+        internals.
+        """
+        return self._request_json("POST", "/api/v5/query_range", json_body=payload)
+
     def find_trace_by_run_id(self, run_id: str) -> tuple[list[TraceSearchHit], dict[str, Any]]:
         return self.search_traces({"agent.run_id": run_id})
 

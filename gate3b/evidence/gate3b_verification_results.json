@@ -1,0 +1,210 @@
+{
+  "all_passed": true,
+  "captured_at": "2026-07-26T05:29:31.705207Z",
+  "commands": [
+    {
+      "captured_at": "2026-07-26T05:29:13.456896Z",
+      "command": [
+        "<current-python>",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "exit_code": 0,
+      "name": "pip_check",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "No broken requirements found.",
+      "test_count": null
+    },
+    {
+      "captured_at": "2026-07-26T05:29:13.769370Z",
+      "command": [
+        "<current-python>",
+        "-m",
+        "compileall",
+        "gate1",
+        "gate2",
+        "gate3",
+        "gate3_preflight",
+        "gate3b",
+        "traceguard_runtime",
+        "tests"
+      ],
+      "exit_code": 0,
+      "name": "compileall",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "Listing 'traceguard_runtime'...\nListing 'tests'...\nListing 'tests\\\\gate1'...\nListing 'tests\\\\gate2'...\nListing 'tests\\\\gate3'...\nListing 'tests\\\\gate3_preflight'...\nListing 'tests\\\\gate3b'...\nListing 'tests\\\\runtime'...",
+      "test_count": null
+    },
+    {
+      "captured_at": "2026-07-26T05:29:15.385870Z",
+      "command": [
+        "<current-python>",
+        "-m",
+        "pytest",
+        "tests/gate3b",
+        "-v",
+        "--basetemp",
+        ".test-tmp-gate3b-finalize",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "exit_code": 0,
+      "name": "gate3b_tests",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "======================= 33 passed, 6 warnings in 0.57s ========================",
+      "test_count": 33
+    },
+    {
+      "captured_at": "2026-07-26T05:29:19.905461Z",
+      "command": [
+        "<current-python>",
+        "-m",
+        "pytest",
+        "tests/gate3",
+        "-v",
+        "--basetemp",
+        ".test-tmp-gate3-finalize",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "exit_code": 0,
+      "name": "gate3_tests",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "tests/gate3/test_cli.py::test_evaluate_exit_codes_and_json_output PASSED [  2%]\ntests/gate3/test_cli.py::test_evaluate_all_validate_and_list_rules PASSED [  8%]\ntests/gate3/test_evaluator.py::test_verdicts_and_one_result_per_rule PASSED [ 22%]\ntests/gate3/test_evaluator.py::test_inapplicable_rules_are_explicit PASSED [ 24%]\ntests/gate3/test_evaluator.py::test_running_same_fixture_twice_is_equivalent_excluding_evaluated_at PASSED [ 26%]\ntests/gate3/test_gate3_models.py::test_result_serializes_deterministically_and_ignores_evaluated_at PASSED [ 40%]\n============================= 50 passed in 3.67s ==============================",
+      "test_count": 50
+    },
+    {
+      "captured_at": "2026-07-26T05:29:21.434762Z",
+      "command": [
+        "<current-python>",
+        "-m",
+        "pytest",
+        "tests/gate3_preflight",
+        "-v",
+        "--basetemp",
+        ".test-tmp-gate3-preflight-finalize",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "exit_code": 0,
+      "name": "gate3_preflight_tests",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "============================= 66 passed in 0.64s ==============================",
+      "test_count": 66
+    },
+    {
+      "captured_at": "2026-07-26T05:29:22.967768Z",
+      "command": [
+        "<current-python>",
+        "-m",
+        "pytest",
+        "tests/gate2",
+        "-v",
+        "--basetemp",
+        ".test-tmp-gate2-finalize",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "exit_code": 0,
+      "name": "gate2_tests",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "============================= 103 passed in 0.72s =============================",
+      "test_count": 103
+    },
+    {
+      "captured_at": "2026-07-26T05:29:24.301578Z",
+      "command": [
+        "<current-python>",
+        "-m",
+        "pytest",
+        "tests/gate1",
+        "-v",
+        "--basetemp",
+        ".test-tmp-gate1-finalize",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "exit_code": 0,
+      "name": "gate1_tests",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "============================== 7 passed in 0.51s ==============================",
+      "test_count": 7
+    },
+    {
+      "captured_at": "2026-07-26T05:29:25.268040Z",
+      "command": [
+        "<current-python>",
+        "-m",
+        "pytest",
+        "tests/runtime",
+        "-v",
+        "--basetemp",
+        ".test-tmp-runtime-finalize",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "exit_code": 0,
+      "name": "runtime_tests",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "============================= 15 passed in 0.22s ==============================",
+      "test_count": 15
+    },
+    {
+      "captured_at": "2026-07-26T05:29:30.856728Z",
+      "command": [
+        "<current-python>",
+        "-m",
+        "pytest",
+        "-v",
+        "--basetemp",
+        ".test-tmp-all-finalize",
+        "-p",
+        "no:cacheprovider"
+      ],
+      "exit_code": 0,
+      "name": "full_suite",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "tests/gate3/test_cli.py::test_evaluate_exit_codes_and_json_output PASSED [ 40%]\ntests/gate3/test_cli.py::test_evaluate_all_validate_and_list_rules PASSED [ 41%]\ntests/gate3/test_evaluator.py::test_verdicts_and_one_result_per_rule PASSED [ 44%]\ntests/gate3/test_evaluator.py::test_inapplicable_rules_are_explicit PASSED [ 44%]\ntests/gate3/test_evaluator.py::test_running_same_fixture_twice_is_equivalent_excluding_evaluated_at PASSED [ 44%]\ntests/gate3/test_gate3_models.py::test_result_serializes_deterministically_and_ignores_evaluated_at PASSED [ 47%]\n======================= 274 passed, 6 warnings in 4.66s =======================",
+      "test_count": 274
+    },
+    {
+      "captured_at": "2026-07-26T05:29:31.140068Z",
+      "command": [
+        "<current-python>",
+        "gate3/cli.py",
+        "validate-fixtures"
+      ],
+      "exit_code": 0,
+      "name": "gate3_validate_fixtures",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "\"fixtures_valid\": true,",
+      "test_count": null
+    },
+    {
+      "captured_at": "2026-07-26T05:29:31.426607Z",
+      "command": [
+        "<current-python>",
+        "gate3/cli.py",
+        "evaluate-all"
+      ],
+      "exit_code": 0,
+      "name": "gate3_evaluate_all",
+      "passed": true,
+      "stderr_summary": "",
+      "stdout_summary": "\"TG-TEL-007\": \"PASSED\",\n\"TG-TEL-008\": \"NOT_APPLICABLE\"\n},\n\"verdict\": \"PASS_WITH_WARNINGS\"\n}\n}\n}\n}",
+      "test_count": null
+    }
+  ],
+  "sanitized": true
+}

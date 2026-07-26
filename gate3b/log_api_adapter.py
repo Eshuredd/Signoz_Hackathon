@@ -19,6 +19,14 @@ from .models import LOG_ID_ATTR, TRACE_SCENARIO_ATTR, Gate3BInfrastructureError,
 NON_RETRY = (AuthenticationFailure, AuthorizationFailure, ConfigurationError, InvalidResponseSchema, UnsupportedAPIOperation, ConnectionFailure, RequestTimeout)
 
 
+class TransientIncompleteLogRow(Gate3BInfrastructureError):
+    """An expected log row is visible but not fully indexed yet."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
 class Gate3BLogRetrievalError(Gate3BInfrastructureError):
     """Log retrieval failed."""
 
@@ -53,7 +61,7 @@ def search_logs(client: SigNozAPIClient, attribute_filters: dict[str, Any], *, l
             ]
         },
     }
-    response = client._request_json("POST", "/api/v5/query_range", json_body=payload)  # type: ignore[attr-defined]
+    response = client.query_range(payload)
     return extract_query_rows(response), response
 
 
@@ -78,7 +86,13 @@ def poll_and_retrieve_logs(
         try:
             attempts += 1
             rows, _raw = search_logs(client, {TRACE_SCENARIO_ATTR: scenario.scenario_id}, limit=100)
-            logs = [normalize_log_row(row) for row in rows]
+            logs = []
+            for row in rows:
+                try:
+                    logs.append(normalize_log_row(row))
+                except TransientIncompleteLogRow as exc:
+                    last_retry_reason = exc.reason
+                    raise
             by_id: dict[str, RetrievedLog] = {}
             for log in logs:
                 if log.attributes.get(TRACE_SCENARIO_ATTR) != scenario.scenario_id:
@@ -94,6 +108,8 @@ def poll_and_retrieve_logs(
             last_retry_reason = "fewer_unique_logs_than_expected"
         except EmptySearchResults:
             last_retry_reason = "authenticated_empty_log_result"
+        except TransientIncompleteLogRow:
+            pass
         except NON_RETRY:
             raise
         if monotonic() >= deadline:
@@ -103,6 +119,8 @@ def poll_and_retrieve_logs(
 
 
 def normalize_log_row(row: dict[str, Any]) -> RetrievedLog:
+    if not isinstance(row, dict):
+        raise InvalidResponseSchema("Log query row must be an object.")
     data = row.get("data") if isinstance(row.get("data"), dict) else row
     if not isinstance(data, dict):
         raise InvalidResponseSchema("Log query row must contain an object data payload.")
@@ -122,8 +140,18 @@ def normalize_log_row(row: dict[str, Any]) -> RetrievedLog:
         body = data.get("message") or data.get("msg") or data.get("log")
     timestamp = data.get("timestamp") or data.get("time") or data.get("time_unix")
     service_name = resource.get("service.name") or attrs.get("service.name") or data.get("service_name")
-    if not log_id or body is None:
-        raise InvalidResponseSchema("Normalized log is missing required log_id or body.")
+    if not log_id:
+        raise TransientIncompleteLogRow("incomplete_log_row_missing_log_id")
+    if body is None:
+        raise TransientIncompleteLogRow("incomplete_log_row_missing_body")
+    if timestamp is None or timestamp == "":
+        raise TransientIncompleteLogRow("incomplete_log_row_missing_timestamp")
+    if not trace_id:
+        raise TransientIncompleteLogRow("incomplete_log_row_missing_trace_id")
+    if not span_id:
+        raise TransientIncompleteLogRow("incomplete_log_row_missing_span_id")
+    if not service_name:
+        raise TransientIncompleteLogRow("incomplete_log_row_missing_service_identity")
     return RetrievedLog(str(log_id), _timestamp_to_iso(timestamp), str(trace_id) if trace_id else None, str(span_id) if span_id else None, body, attrs, resource, str(service_name) if service_name else None)
 
 
@@ -140,12 +168,17 @@ def log_api_contract(signoz_version: str) -> dict[str, object]:
         "attribute_source": "data.attributes | data.attrs | data.attributes_string | data.attributes_number | data.attributes_bool",
         "resource_attribute_source": "data.resource | data.resources | data.resource_attributes | data.resources_string",
         "body_source": "data.body | data.message | data.msg | data.log",
+        "gate2_public_query_method": "SigNozAPIClient.query_range",
         "sanitized": True,
     }
 
 
 def _ensure_dict(value: Any) -> dict[str, Any]:
-    return dict(value) if isinstance(value, dict) else {}
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise InvalidResponseSchema("Log query typed attribute/resource maps must be objects when present.")
+    return dict(value)
 
 
 def _merged_dicts(*values: Any) -> dict[str, Any]:

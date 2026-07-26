@@ -194,3 +194,17 @@ def test_attribute_search_success_survives_direct_lookup_failure(monkeypatch: py
     assert evidence.direct_lookup.state == CapabilityState.FAILED
     assert evidence.attribute_search.state == CapabilityState.OBSERVED
     assert evidence.trace is not None
+
+
+def test_query_range_uses_public_authenticated_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = SigNozAPIClient(config(), DummyLogger())
+    calls = {}
+
+    def request_json(method: str, path: str, *, json_body=None, auth: bool = True):
+        calls.update({"method": method, "path": path, "json_body": json_body, "auth": auth})
+        return {"status": "success", "data": {"data": {"results": []}}}
+
+    monkeypatch.setattr(client, "_request_json", request_json)
+    payload = {"x": 1}
+    assert client.query_range(payload)["status"] == "success"
+    assert calls == {"method": "POST", "path": "/api/v5/query_range", "json_body": payload, "auth": True}

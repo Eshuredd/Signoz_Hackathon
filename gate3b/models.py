@@ -197,9 +197,81 @@ class EnvironmentCheckResult:
 
 
 @dataclass(frozen=True)
+class TracePreservationResult:
+    trace_ids_match: bool
+    span_count_match: bool
+    span_names_match: bool
+    span_ids_match: bool
+    parent_relationships_match: bool
+    canonical_attributes_match: bool
+    run_id_preserved: bool
+    fragmentation_preserved: bool
+    scenario_correlation_match: bool
+    service_identity_preserved: bool
+    timing_preserved: bool
+    errors: tuple[str, ...] = field(default_factory=tuple)
+
+    @property
+    def passed(self) -> bool:
+        return all(
+            (
+                self.trace_ids_match,
+                self.span_count_match,
+                self.span_names_match,
+                self.span_ids_match,
+                self.parent_relationships_match,
+                self.canonical_attributes_match,
+                self.run_id_preserved,
+                self.fragmentation_preserved,
+                self.scenario_correlation_match,
+                self.service_identity_preserved,
+                self.timing_preserved,
+            )
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return self.__dict__.copy() | {"errors": list(self.errors), "passed": self.passed}
+
+
+@dataclass(frozen=True)
+class LogPreservationResult:
+    log_ids_match: bool
+    scenario_correlation_match: bool
+    trace_span_correlation_match: bool
+    agent_run_id_preserved: bool
+    intentional_mismatch_preserved: bool
+    body_preserved: bool
+    timestamp_preserved: bool
+    service_identity_preserved: bool
+    resource_attributes_preserved: bool
+    errors: tuple[str, ...] = field(default_factory=tuple)
+
+    @property
+    def passed(self) -> bool:
+        return all(
+            (
+                self.log_ids_match,
+                self.scenario_correlation_match,
+                self.trace_span_correlation_match,
+                self.agent_run_id_preserved,
+                self.intentional_mismatch_preserved,
+                self.body_preserved,
+                self.timestamp_preserved,
+                self.service_identity_preserved,
+                self.resource_attributes_preserved,
+            )
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return self.__dict__.copy() | {"errors": list(self.errors), "passed": self.passed}
+
+
+@dataclass(frozen=True)
 class VerificationResult:
     trace_preservation_result: bool
     log_preservation_result: bool
+    trace_details: TracePreservationResult | None = None
+    log_details: LogPreservationResult | None = None
     errors: tuple[str, ...] = field(default_factory=tuple)
 
     @property
@@ -210,6 +282,8 @@ class VerificationResult:
         return {
             "trace_preservation_result": self.trace_preservation_result,
             "log_preservation_result": self.log_preservation_result,
+            "trace_details": self.trace_details.to_dict() if self.trace_details else None,
+            "log_details": self.log_details.to_dict() if self.log_details else None,
             "errors": list(self.errors),
             "passed": self.passed,
         }
@@ -217,4 +291,3 @@ class VerificationResult:
 
 def now_iso() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
-

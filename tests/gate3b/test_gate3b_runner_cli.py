@@ -37,7 +37,7 @@ def test_runner_mismatch_allows_next_scenario_and_internal_stops(config) -> None
         def request_json(*args, **kwargs):
             return {"status": "success", "data": {"data": {"results": [{"rows": []}]}}}
 
-        return SimpleNamespace(health_check=lambda: {"status": "ok"}, version=lambda: {"version": "v0.test"}, search_traces=search_traces, _request_json=request_json)
+        return SimpleNamespace(health_check=lambda: {"status": "ok"}, version=lambda: {"version": "v0.test"}, search_traces=search_traces, query_range=lambda payload: request_json())
 
     def trace_emit(scenario, cfg):
         calls.append(scenario.name)
@@ -95,3 +95,23 @@ class FakeTraceExporter:
 
     def shutdown(self) -> None:
         pass
+
+
+def test_normal_runner_never_writes_committed_evidence(config) -> None:
+    written: list[str] = []
+
+    def writer(path, payload):
+        written.append(str(path).replace("\\", "/"))
+
+    def client_factory(cfg):
+        return SimpleNamespace(
+            health_check=lambda: {"status": "ok"},
+            version=lambda: {"version": "v0.test"},
+            search_traces=lambda *args, **kwargs: (_ for _ in ()).throw(__import__("exceptions").EmptySearchResults("empty")),
+            query_range=lambda payload: {"status": "success", "data": {"data": {"results": [{"rows": []}]}}},
+        )
+
+    deps = RunnerDependencies(config_factory=lambda: config, client_factory=client_factory, write_json=writer)
+    assert run_gate3b(check_environment_only=True, deps=deps) == 0
+    assert any(path.startswith(".traceguard/runtime/gate3b/") for path in written)
+    assert not any(path.startswith("gate3b/evidence/") for path in written)

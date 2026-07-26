@@ -3,17 +3,11 @@ from __future__ import annotations
 import logging
 from typing import Callable
 
-from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
-from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-from opentelemetry.sdk._logs.export import InMemoryLogExporter, LogExportResult, LogRecordExportResult, SimpleLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 
 from .config import Gate3BConfig
-from .models import LOG_ID_ATTR, TRACE_BATCH_ATTR, TRACE_SCENARIO_ATTR, TRACE_SCENARIO_NAME_ATTR, Gate3BInfrastructureError, LogEmissionResult, RuntimeScenario, TraceEmissionResult, now_iso
-
-
-class Gate3BLogExportError(Gate3BInfrastructureError):
-    """Log export failed."""
+from .models import LOG_ID_ATTR, TRACE_BATCH_ATTR, TRACE_SCENARIO_ATTR, TRACE_SCENARIO_NAME_ATTR, LogEmissionResult, RuntimeScenario, TraceEmissionResult, now_iso
+from .otel_log_compat import Gate3BLogExportError, InMemoryLogExporter, LoggerProvider, LoggingHandler, LogExportResult, LogRecordExportResult, OTLPLogExporter, SimpleLogRecordProcessor
 
 
 def emit_logs(

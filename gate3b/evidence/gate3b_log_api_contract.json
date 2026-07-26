@@ -2,6 +2,7 @@
   "attribute_source": "data.attributes | data.attrs | data.attributes_string | data.attributes_number | data.attributes_bool",
   "authenticated_api_path_used": "/api/v5/query_range",
   "body_source": "data.body | data.message | data.msg | data.log",
+  "gate2_public_query_method": "SigNozAPIClient.query_range",
   "normalized_fields": [
     "log_id",
     "timestamp",
@@ -12,6 +13,14 @@
     "resource_attributes",
     "service_name"
   ],
+  "opentelemetry_api_import_path_used": "opentelemetry.sdk._logs",
+  "opentelemetry_otlp_exporter_import_path_used": "opentelemetry.exporter.otlp.proto.http._log_exporter.OTLPLogExporter",
+  "opentelemetry_package_versions": {
+    "opentelemetry-api": "1.44.0",
+    "opentelemetry-exporter-otlp-proto-http": "1.44.0",
+    "opentelemetry-sdk": "1.44.0"
+  },
+  "private_fallback_used": true,
   "query_signal_type": "logs",
   "resource_attribute_source": "data.resource | data.resources | data.resource_attributes | data.resources_string",
   "sanitized": true,
