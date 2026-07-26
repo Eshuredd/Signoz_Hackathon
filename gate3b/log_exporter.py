@@ -72,7 +72,7 @@ def _create_memory_logs(scenario: RuntimeScenario, config: Gate3BConfig, trace_e
             expected_span_ids[log_id] = span_id
             bodies[log_id] = body
         records = tuple(memory_exporter.get_finished_logs())
-        manifest = LogEmissionResult(scenario.name, scenario.log_ids, expected_agent_run_ids, expected_trace_ids, expected_span_ids, bodies, now_iso())
+        manifest = LogEmissionResult(scenario.name, config.service_name, scenario.log_ids, expected_agent_run_ids, expected_trace_ids, expected_span_ids, bodies, now_iso())
         return records, manifest
     finally:
         logger.removeHandler(handler)

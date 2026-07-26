@@ -17,6 +17,7 @@ def emission_for(scenario, trace_id: str = "a" * 32, root: str = "1" * 16, tool:
     return TraceEmissionResult(
         scenario.name,
         scenario.agent_run_id,
+        "svc",
         (trace_id,),
         {trace_id: root},
         {trace_id: {"agent.run": root, "tool.call": tool, "model.call": model}},
@@ -36,6 +37,7 @@ def logs_for(scenario, trace_id: str = "a" * 32, root: str = "1" * 16, tool: str
     ids = scenario.log_ids
     return LogEmissionResult(
         scenario.name,
+        "svc",
         ids,
         {ids[0]: scenario.agent_run_id, ids[1]: scenario.agent_run_id},
         {ids[0]: trace_id, ids[1]: trace_id},
@@ -73,6 +75,38 @@ def test_trace_parent_canonical_service_and_timing_failures_are_reported(scenari
     assert result.trace_details.timing_preserved is False
 
 
+def test_exact_service_names_are_required(scenario) -> None:
+    trace_id = "a" * 32
+    trace_emission = emission_for(scenario, trace_id)
+    log_emission = logs_for(scenario, trace_id)
+    good_trace = make_trace(trace_id, scenario, service_name="svc")
+    good_logs = (
+        make_log(scenario.log_ids[0], scenario, trace_id, "1" * 16, body="body-0"),
+        make_log(scenario.log_ids[1], scenario, trace_id, "2" * 16, body="body-1"),
+    )
+    assert verify_preservation(scenario, trace_emission, (good_trace,), log_emission, good_logs).passed is True
+
+    bad_trace = make_trace(trace_id, scenario, service_name="other")
+    trace_result = verify_preservation(scenario, trace_emission, (bad_trace,), log_emission, good_logs)
+    assert trace_result.trace_details is not None
+    assert trace_result.trace_details.service_identity_preserved is False
+
+    bad_log = replace(good_logs[0], service_name="other")
+    log_result = verify_preservation(scenario, trace_emission, (good_trace,), log_emission, (bad_log, good_logs[1]))
+    assert log_result.log_details is not None
+    assert log_result.log_details.service_identity_preserved is False
+
+    bad_resource = replace(good_logs[0], resource_attributes={"service.name": "other"})
+    resource_result = verify_preservation(scenario, trace_emission, (good_trace,), log_emission, (bad_resource, good_logs[1]))
+    assert resource_result.log_details is not None
+    assert resource_result.log_details.resource_attributes_preserved is False
+
+
+def test_service_identity_values_serialize(scenario) -> None:
+    assert emission_for(scenario).to_dict()["service_name"] == "svc"
+    assert logs_for(scenario).to_dict()["service_name"] == "svc"
+
+
 def test_log_intentional_mismatch_must_not_be_repaired(config) -> None:
     from gate3b.scenarios import get_definition, runtime_scenario
 
@@ -83,6 +117,7 @@ def test_log_intentional_mismatch_must_not_be_repaired(config) -> None:
     ids = scenario.log_ids
     log_emission = LogEmissionResult(
         scenario.name,
+        "svc",
         ids,
         {ids[0]: scenario.agent_run_id, ids[1]: f"{scenario.agent_run_id}-mismatch"},
         {ids[0]: trace_id, ids[1]: trace_id},

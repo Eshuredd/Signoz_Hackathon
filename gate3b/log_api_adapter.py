@@ -138,12 +138,14 @@ def normalize_log_row(row: dict[str, Any]) -> RetrievedLog:
     body = data.get("body")
     if body is None:
         body = data.get("message") or data.get("msg") or data.get("log")
-    timestamp = data.get("timestamp") or data.get("time") or data.get("time_unix")
+    timestamp = _first_present(data, "timestamp", "time", "time_unix")
     service_name = resource.get("service.name") or attrs.get("service.name") or data.get("service_name")
     if not log_id:
         raise TransientIncompleteLogRow("incomplete_log_row_missing_log_id")
     if body is None:
         raise TransientIncompleteLogRow("incomplete_log_row_missing_body")
+    if isinstance(timestamp, (dict, list, bool)):
+        raise InvalidResponseSchema("Normalized log timestamp has an unsupported structured type.")
     if timestamp is None or timestamp == "":
         raise TransientIncompleteLogRow("incomplete_log_row_missing_timestamp")
     if not trace_id:
@@ -152,7 +154,10 @@ def normalize_log_row(row: dict[str, Any]) -> RetrievedLog:
         raise TransientIncompleteLogRow("incomplete_log_row_missing_span_id")
     if not service_name:
         raise TransientIncompleteLogRow("incomplete_log_row_missing_service_identity")
-    return RetrievedLog(str(log_id), _timestamp_to_iso(timestamp), str(trace_id) if trace_id else None, str(span_id) if span_id else None, body, attrs, resource, str(service_name) if service_name else None)
+    normalized_timestamp = _timestamp_to_iso(timestamp)
+    if normalized_timestamp is None:
+        raise TransientIncompleteLogRow("incomplete_log_row_invalid_timestamp")
+    return RetrievedLog(str(log_id), normalized_timestamp, str(trace_id) if trace_id else None, str(span_id) if span_id else None, body, attrs, resource, str(service_name) if service_name else None)
 
 
 def log_api_contract(signoz_version: str) -> dict[str, object]:
@@ -188,13 +193,22 @@ def _merged_dicts(*values: Any) -> dict[str, Any]:
     return merged
 
 
+def _first_present(data: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in data:
+            return data[key]
+    return None
+
+
 def _timestamp_to_iso(value: Any) -> str | None:
     if value is None or value == "":
+        return None
+    if isinstance(value, bool):
         return None
     if isinstance(value, str):
         try:
             return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(UTC).isoformat().replace("+00:00", "Z")
-        except ValueError:
+        except (OverflowError, OSError, ValueError):
             pass
     try:
         numeric = float(value)
@@ -209,4 +223,7 @@ def _timestamp_to_iso(value: Any) -> str | None:
         seconds = numeric / 1_000
     else:
         seconds = numeric
-    return datetime.fromtimestamp(seconds, tz=UTC).isoformat().replace("+00:00", "Z")
+    try:
+        return datetime.fromtimestamp(seconds, tz=UTC).isoformat().replace("+00:00", "Z")
+    except (OverflowError, OSError, ValueError):
+        return None

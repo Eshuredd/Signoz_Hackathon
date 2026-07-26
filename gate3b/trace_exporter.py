@@ -106,6 +106,7 @@ def _emission_result(scenario: RuntimeScenario, spans: tuple[ReadableSpan, ...])
     return TraceEmissionResult(
         scenario_name=scenario.name,
         agent_run_id=scenario.agent_run_id,
+        service_name=_service_name(spans),
         emitted_trace_ids=trace_ids,
         root_span_ids_by_trace_id={trace_id: _span_id(by_name["agent.run"]) for trace_id, by_name in by_trace.items()},
         span_ids_by_trace_id_and_name={trace_id: {name: _span_id(span) for name, span in by_name.items()} for trace_id, by_name in by_trace.items()},
@@ -128,3 +129,12 @@ def _parent_span_id(span: ReadableSpan) -> str | None:
         return None
     return f"{span.parent.span_id:016x}"
 
+
+def _service_name(spans: tuple[ReadableSpan, ...]) -> str:
+    for span in spans:
+        resource = getattr(span, "resource", None)
+        attrs = getattr(resource, "attributes", {}) if resource is not None else {}
+        value = attrs.get("service.name") if attrs else None
+        if value:
+            return str(value)
+    return ""

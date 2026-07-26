@@ -89,6 +89,7 @@ class RuntimeScenario:
 class TraceEmissionResult:
     scenario_name: str
     agent_run_id: str
+    service_name: str
     emitted_trace_ids: tuple[str, ...]
     root_span_ids_by_trace_id: dict[str, str]
     span_ids_by_trace_id_and_name: dict[str, dict[str, str]]
@@ -104,6 +105,7 @@ class TraceEmissionResult:
 @dataclass(frozen=True)
 class LogEmissionResult:
     scenario_name: str
+    service_name: str
     log_ids: tuple[str, ...]
     expected_agent_run_ids: dict[str, str]
     expected_trace_ids: dict[str, str]
@@ -115,6 +117,7 @@ class LogEmissionResult:
     def to_dict(self) -> dict[str, object]:
         return {
             "scenario_name": self.scenario_name,
+            "service_name": self.service_name,
             "log_ids": list(self.log_ids),
             "expected_agent_run_ids": self.expected_agent_run_ids,
             "expected_trace_ids": self.expected_trace_ids,

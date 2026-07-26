@@ -20,15 +20,15 @@ def scenario() -> RuntimeScenario:
     return runtime_scenario(get_definition("pass_single_trace_correlated_logs"), "batch-test")
 
 
-def make_trace(trace_id: str, scenario: RuntimeScenario, root: str = "1" * 16, tool: str = "2" * 16, model: str = "3" * 16, input_tokens: int = 7, output_tokens: int = 11) -> Trace:
+def make_trace(trace_id: str, scenario: RuntimeScenario, root: str = "1" * 16, tool: str = "2" * 16, model: str = "3" * 16, input_tokens: int = 7, output_tokens: int = 11, service_name: str = "svc") -> Trace:
     now = datetime.now(UTC)
     base = {TRACE_BATCH_ATTR: scenario.batch_id, TRACE_SCENARIO_ATTR: scenario.scenario_id, TRACE_SCENARIO_NAME_ATTR: scenario.name}
     return Trace(
         trace_id,
         [
-            Span(trace_id, root, None, "agent.run", now, now, 1, {}, base | {"agent.run_id": scenario.agent_run_id, "agent.name": "traceguard-gate3b", "agent.status": "success"}, {"service.name": "svc"}, "svc"),
-            Span(trace_id, tool, root, "tool.call", now, now, 1, {}, base | {"tool.status": "success"}, {"service.name": "svc"}, "svc"),
-            Span(trace_id, model, root, "model.call", now, now, 1, {}, base | {"gen_ai.request.model": "gpt-gate3b", "gen_ai.usage.input_tokens": input_tokens, "gen_ai.usage.output_tokens": output_tokens}, {"service.name": "svc"}, "svc"),
+            Span(trace_id, root, None, "agent.run", now, now, 1, {}, base | {"agent.run_id": scenario.agent_run_id, "agent.name": "traceguard-gate3b", "agent.status": "success"}, {"service.name": service_name}, service_name),
+            Span(trace_id, tool, root, "tool.call", now, now, 1, {}, base | {"tool.status": "success"}, {"service.name": service_name}, service_name),
+            Span(trace_id, model, root, "model.call", now, now, 1, {}, base | {"gen_ai.request.model": "gpt-gate3b", "gen_ai.usage.input_tokens": input_tokens, "gen_ai.usage.output_tokens": output_tokens}, {"service.name": service_name}, service_name),
         ],
         now,
         Source.TRACE_API,

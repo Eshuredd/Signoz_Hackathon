@@ -112,9 +112,9 @@ def _verify_traces(scenario: RuntimeScenario, emission: TraceEmissionResult, ret
                 scenario_correlation_match = False
                 errors.append(f"{trace_id} span {span.span_id} missing Gate 3B correlation")
             service_name = span.service_name or span.resource_attributes.get("service.name")
-            if service_name != "svc" and not service_name:
+            if service_name != emission.service_name:
                 service_identity_preserved = False
-                errors.append(f"{trace_id} span {span.span_id} missing service identity")
+                errors.append(f"{trace_id} span {span.span_id} service identity changed")
             if not _timing_ok(span.start_time, span.end_time, span.duration_nano):
                 timing_preserved = False
                 errors.append(f"{trace_id} span {span.span_id} has invalid timing")
@@ -170,12 +170,12 @@ def _verify_logs(scenario: RuntimeScenario, trace_emission: TraceEmissionResult,
             timestamp_preserved = False
             errors.append(f"{log.log_id} timestamp missing or invalid")
         service_name = log.service_name or log.resource_attributes.get("service.name")
-        if not service_name:
+        if service_name != emission.service_name:
             service_identity_preserved = False
-            errors.append(f"{log.log_id} missing service identity")
-        if not log.resource_attributes or "service.name" not in log.resource_attributes:
+            errors.append(f"{log.log_id} service identity changed")
+        if not log.resource_attributes or log.resource_attributes.get("service.name") != emission.service_name:
             resource_attributes_preserved = False
-            errors.append(f"{log.log_id} missing resource service.name")
+            errors.append(f"{log.log_id} resource service.name changed")
     return LogPreservationResult(log_ids_match, scenario_correlation_match, trace_span_correlation_match, agent_run_id_preserved, intentional_mismatch_preserved, body_preserved, timestamp_preserved, service_identity_preserved, resource_attributes_preserved, tuple(errors))
 
 

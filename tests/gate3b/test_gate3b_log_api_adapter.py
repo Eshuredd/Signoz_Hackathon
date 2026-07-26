@@ -43,6 +43,29 @@ def test_missing_complete_fields_are_transient() -> None:
     assert exc.value.reason == "incomplete_log_row_missing_log_id"
 
 
+def complete_row(scenario, log_id: str = "log-1", timestamp=1):
+    return {
+        "data": {
+            "attributes_string": {LOG_ID_ATTR: log_id, TRACE_SCENARIO_ATTR: scenario.scenario_id, "trace_id": "a" * 32, "span_id": "1" * 16},
+            "resources_string": {"service.name": "svc"},
+            "body": "body",
+            "timestamp": timestamp,
+        }
+    }
+
+
+def test_invalid_recognized_timestamps_are_transient_and_structured_types_are_permanent(scenario) -> None:
+    for timestamp, reason in ((None, "incomplete_log_row_missing_timestamp"), ("", "incomplete_log_row_missing_timestamp"), ("indexing", "incomplete_log_row_invalid_timestamp")):
+        row = complete_row(scenario, timestamp=timestamp)
+        with pytest.raises(TransientIncompleteLogRow) as exc:
+            normalize_log_row(row)
+        assert exc.value.reason == reason
+    for timestamp in (True, {}, []):
+        with pytest.raises(InvalidResponseSchema):
+            normalize_log_row(complete_row(scenario, timestamp=timestamp))
+    assert normalize_log_row(complete_row(scenario)).timestamp is not None
+
+
 def test_permanent_invalid_log_row_schema_fails() -> None:
     with pytest.raises(InvalidResponseSchema):
         normalize_log_row({"data": {"attributes_string": "bad"}})

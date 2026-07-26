@@ -54,6 +54,8 @@ Committed evidence is published only by the explicit finalizer:
 
 The finalizer rejects unknown batches, environment-only summaries, selected-scenario runs, incomplete runs, failed live runs, fewer than four scenarios, mismatched status maps or verdicts, and preservation failures. It never alters the runtime source summary.
 
+The finalizer is an independent evidence-trust boundary. Runner conclusion flags such as `matched_expectations`, `exact_status_match`, `verdict_match`, preservation booleans, `matched_count`, `failed_count`, and `all_expectations_matched` are not trusted as authoritative. The finalizer recomputes scenario truth from the raw summary fields: canonical rule IDs from `gate3.rules.RULE_BY_ID`, valid `RuleStatus` values, exact expected/actual status-map equality, verdict/status consistency through the canonical verdict function, trace/log counts, emitted/discovered/retrieved trace-ID sets, emitted/retrieved log-ID sets, detailed preservation fields, and environment authentication/endpoint proof.
+
 Finalizer exit codes:
 
 - `0`: evidence finalized and committed evidence files written
@@ -65,6 +67,10 @@ Finalizer exit codes:
 `gate3b_complete` is decided only by the finalizer. Completion requires a complete four-scenario live batch with live exit code `0`, exact 14-rule status-map matches, verdict matches, trace/log preservation, Gate 3B/Gate 3/Gate 3 preflight/Gate 2/Gate 1/runtime/full-suite tests, Gate 3 fixture validation, Gate 3 evaluate-all, and the tracked-secret scan.
 
 The finalizer records concise sanitized command results with command name, current-Python command, exit code, pass/fail, parsed pytest count where available, output summaries, and capture time. It does not fabricate test totals.
+
+The verification result set must contain exactly `pip_check`, `compileall`, `gate3b_tests`, `gate3_tests`, `gate3_preflight_tests`, `gate2_tests`, `gate1_tests`, `runtime_tests`, `full_suite`, `gate3_validate_fixtures`, and `gate3_evaluate_all`. Missing, duplicate, unknown, malformed, or failed command results reject finalization.
+
+Secret scanning uses exact placeholder values only, including `<redacted>`, `<set>`, `<your-api-key>`, `<your-service-account-key>`, `example-key`, `fake-key`, `fake-token`, `fake-dotenv-secret`, `synthetic-token`, `test-api-key`, and `changeme-for-local-testing`. Broad words such as `fake`, `example`, `secret`, or `synthetic` do not exempt a line or file. Proposed evidence JSON is serialized deterministically and scanned before dry-run output and before actual writing; credible findings block publication without printing matched values.
 
 Published evidence files:
 
@@ -81,6 +87,10 @@ Trace preservation verifies exact trace ID sets, duplicate trace objects, three 
 
 Log preservation verifies exact log ID sets, Gate 3B log/scenario correlation attributes, trace/span membership in the retrieved traces, correlated `agent.run_id` values, the intentionally wrong warning-scenario `agent.run_id`, exact body preservation, timezone-aware timestamps, service identity, and non-empty resource attributes including `service.name`.
 
-Temporarily incomplete expected log rows are classified as `TransientIncompleteLogRow` and retried until the configured monotonic deadline. Permanent invalid schemas, authentication/authorization/configuration failures, unsupported API operation, connection failures, request timeouts, unexpected log IDs, contradictory duplicate log IDs, and scenario-ID mismatches are not retried.
+Trace and log emission manifests record the configured emitted service name. Retrieved span and log service identity must exactly match that emitted value; a non-empty but different service name fails preservation.
 
-OpenTelemetry log API imports are isolated in `gate3b/otel_log_compat.py`. The module records installed OpenTelemetry package versions and whether a private fallback import path was required. Gate 3B log retrieval uses Gate 2's public `SigNozAPIClient.query_range()` method and does not call `_request_json()` directly.
+Temporarily incomplete expected log rows are classified as `TransientIncompleteLogRow` and retried until the configured monotonic deadline. Missing, empty, and recognised-but-unparseable timestamps retry as incomplete indexing. Boolean, dictionary, list, or other structured timestamp values are permanent schema errors. Permanent invalid schemas, authentication/authorization/configuration failures, unsupported API operation, connection failures, request timeouts, unexpected log IDs, contradictory duplicate log IDs, and scenario-ID mismatches are not retried.
+
+OpenTelemetry log API imports are isolated in `gate3b/otel_log_compat.py`. The module attempts known public import paths first, falls back to the tested private paths only when needed, and records selected paths, attempted public paths, installed OpenTelemetry package versions, and whether any private fallback was required. Gate 3B log retrieval uses Gate 2's public `SigNozAPIClient.query_range()` method and does not call `_request_json()` directly.
+
+Decision evidence includes `validation_recomputed_by_finalizer`, `runner_flags_trusted_as_authoritative`, `exact_verification_command_set`, and `proposed_evidence_scan_passed` so completion can be audited from recomputed finalizer evidence rather than runner claims.

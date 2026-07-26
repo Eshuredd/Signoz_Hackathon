@@ -8,7 +8,7 @@ from typing import Callable
 from uuid import uuid4
 
 from gate3.evaluator import evaluate_run_bundle
-from gate3.models import EvaluationLevel
+from gate3.models import EvaluationLevel, RULESET_VERSION
 from gate3.rules import RULE_BY_ID
 from gate3.trace_loader import load_run_bundle_payload
 
@@ -134,6 +134,10 @@ def run_gate3b(
                     "retrieved_log_ids": [log.log_id for log in log_retrieval.logs],
                     "trace_preservation_result": verification.trace_preservation_result,
                     "log_preservation_result": verification.log_preservation_result,
+                    "trace_preservation_details": verification.trace_details.to_dict() if verification.trace_details else None,
+                    "log_preservation_details": verification.log_details.to_dict() if verification.log_details else None,
+                    "preservation_errors": list(verification.errors),
+                    "preservation_passed": verification.passed,
                     "expected_trace_count": definition.expected_trace_count,
                     "actual_trace_count": len(trace_retrieval.traces),
                     "expected_log_count": definition.expected_log_count,
