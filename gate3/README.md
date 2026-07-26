@@ -28,4 +28,6 @@ Individual exit codes are `0` for `PASS`, `10` for `PASS_WITH_WARNINGS`, `20` fo
 
 Gate 3 remains network-independent. Live SigNoz proof lives in `gate3_preflight/`.
 
+Gate 3B live run-level validation with SigNoz traces and logs lives in [gate3b/README.md](../gate3b/README.md). It feeds this unchanged evaluator through validated run bundles.
+
 Live contract completion remains dependent on a successful `gate3_preflight` run against the local SigNoz and OTLP collector stack.

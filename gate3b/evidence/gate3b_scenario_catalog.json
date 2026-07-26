@@ -1,0 +1,147 @@
+{
+  "ruleset_version": "traceguard-telemetry-v2",
+  "sanitized": true,
+  "scenario_count": 4,
+  "scenarios": [
+    {
+      "description": "One canonical valid trace with two retrieved logs correlated by agent.run_id, trace_id, and span_id.",
+      "expected_log_count": 2,
+      "expected_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "PASSED"
+      },
+      "expected_trace_count": 1,
+      "expected_verdict": "PASS",
+      "log_plan": [
+        {
+          "agent_run_id_mode": "match",
+          "name": "root-log",
+          "span_name": "agent.run"
+        },
+        {
+          "agent_run_id_mode": "match",
+          "name": "child-log",
+          "span_name": "tool.call"
+        }
+      ],
+      "name": "pass_single_trace_correlated_logs",
+      "sanitized": true,
+      "synthetic": true,
+      "trace_plan": [
+        "primary"
+      ]
+    },
+    {
+      "description": "One canonical valid trace and an explicit empty log collection.",
+      "expected_log_count": 0,
+      "expected_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "NOT_APPLICABLE"
+      },
+      "expected_trace_count": 1,
+      "expected_verdict": "PASS",
+      "log_plan": [],
+      "name": "pass_single_trace_without_logs",
+      "sanitized": true,
+      "synthetic": true,
+      "trace_plan": [
+        "primary"
+      ]
+    },
+    {
+      "description": "One canonical valid trace with one intentionally mismatched log agent.run_id.",
+      "expected_log_count": 2,
+      "expected_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "FAILED"
+      },
+      "expected_trace_count": 1,
+      "expected_verdict": "PASS_WITH_WARNINGS",
+      "log_plan": [
+        {
+          "agent_run_id_mode": "match",
+          "name": "correlated-log",
+          "span_name": "agent.run"
+        },
+        {
+          "agent_run_id_mode": "mismatch",
+          "name": "wrong-run-log",
+          "span_name": "model.call"
+        }
+      ],
+      "name": "pass_with_warnings_uncorrelated_logs",
+      "sanitized": true,
+      "synthetic": true,
+      "trace_plan": [
+        "primary"
+      ]
+    },
+    {
+      "description": "Two canonical valid traces sharing the same agent.run_id to prove fragmentation blocking.",
+      "expected_log_count": 0,
+      "expected_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "FAILED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "NOT_APPLICABLE"
+      },
+      "expected_trace_count": 2,
+      "expected_verdict": "BLOCK",
+      "log_plan": [],
+      "name": "block_fragmented_run",
+      "sanitized": true,
+      "synthetic": true,
+      "trace_plan": [
+        "fragment-a",
+        "fragment-b"
+      ]
+    }
+  ],
+  "synthetic": true
+}

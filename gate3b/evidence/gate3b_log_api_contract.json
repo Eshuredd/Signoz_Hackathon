@@ -1,0 +1,23 @@
+{
+  "attribute_source": "data.attributes | data.attrs | data.attributes_string | data.attributes_number | data.attributes_bool",
+  "authenticated_api_path_used": "/api/v5/query_range",
+  "body_source": "data.body | data.message | data.msg | data.log",
+  "normalized_fields": [
+    "log_id",
+    "timestamp",
+    "trace_id",
+    "span_id",
+    "body",
+    "attributes",
+    "resource_attributes",
+    "service_name"
+  ],
+  "query_signal_type": "logs",
+  "resource_attribute_source": "data.resource | data.resources | data.resource_attributes | data.resources_string",
+  "sanitized": true,
+  "scenario_attribute_filter": "traceguard.gate3b_scenario_id",
+  "signoz_version": "v0.134.0",
+  "span_id_source": "data.span_id when present, otherwise attributes_string.span_id",
+  "timestamp_source": "data.timestamp | row.timestamp | data.time | data.time_unix",
+  "trace_id_source": "data.trace_id when present, otherwise attributes_string.trace_id"
+}

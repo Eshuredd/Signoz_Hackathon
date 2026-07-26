@@ -1,0 +1,21 @@
+{
+  "all_scenarios_matched": true,
+  "authoritative_log_source": "SIGNOZ_LOG_API",
+  "authoritative_trace_source": "TRACE_API_AUTHORITATIVE",
+  "exact_status_maps_verified": true,
+  "gate": "3B",
+  "gate3b_complete": true,
+  "live_exit_code": 0,
+  "log_otlp_export_verified": true,
+  "log_retrieval_verified": true,
+  "next_action": "Begin TG-AGT v1 agent-behaviour rules using controlled agent execution scenarios, while requiring traceguard-telemetry-v2 to pass as the mandatory telemetry-quality precondition.",
+  "ruleset_version": "traceguard-telemetry-v2",
+  "run_bundle_validation_verified": true,
+  "sanitized": true,
+  "scenario_count": 4,
+  "test_results": "recorded in completion report",
+  "tg_tel_003b_live_verified": true,
+  "tg_tel_008_live_verified": true,
+  "trace_otlp_export_verified": true,
+  "trace_retrieval_verified": true
+}

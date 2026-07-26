@@ -1,0 +1,355 @@
+{
+  "all_expectations_matched": true,
+  "authenticated_log_api_result": true,
+  "authenticated_trace_api_result": true,
+  "authoritative_sources": {
+    "log": "SIGNOZ_LOG_API",
+    "trace": "TRACE_API_AUTHORITATIVE"
+  },
+  "captured_at": "2026-07-26T05:03:32.891522Z",
+  "completed_count": 4,
+  "docker_status": "not captured by Gate 3B runner",
+  "failed_count": 0,
+  "live_command_exit_code": 0,
+  "log_otlp_endpoint": "http://localhost:4318/v1/logs",
+  "matched_count": 4,
+  "offline_test_results": "recorded in completion report",
+  "runtime_batch_id": "20260726T050312Z-c9bbcd3aeb20",
+  "sanitized": true,
+  "scenario_count": 4,
+  "scenarios": {
+    "block_fragmented_run": {
+      "actual_log_count": 0,
+      "actual_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "FAILED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "NOT_APPLICABLE"
+      },
+      "actual_trace_count": 2,
+      "actual_verdict": "BLOCK",
+      "agent_run_id": "tg-gate3b-run-72b103dd-d4d7-4352-8340-ce3a587fc93e",
+      "discovered_trace_ids": [
+        "4bb4e2ff6636ff7e2434f14b55168869",
+        "7f44ee73f5b67063c21ea80530095cfb"
+      ],
+      "elapsed_ms": 6679,
+      "emitted_log_ids": [],
+      "emitted_span_ids": {
+        "4bb4e2ff6636ff7e2434f14b55168869": {
+          "agent.run": "01294aa4a4ee6aba",
+          "model.call": "562726ae91f7f7a8",
+          "tool.call": "ee627739a82a1a6b"
+        },
+        "7f44ee73f5b67063c21ea80530095cfb": {
+          "agent.run": "71934c52d089c69d",
+          "model.call": "e623584ad90086c4",
+          "tool.call": "941d90cc237c7a8c"
+        }
+      },
+      "emitted_trace_ids": [
+        "4bb4e2ff6636ff7e2434f14b55168869",
+        "7f44ee73f5b67063c21ea80530095cfb"
+      ],
+      "evaluator_contract_match": true,
+      "exact_status_match": true,
+      "expected_log_count": 0,
+      "expected_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "FAILED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "NOT_APPLICABLE"
+      },
+      "expected_trace_count": 2,
+      "expected_verdict": "BLOCK",
+      "log_preservation_result": true,
+      "matched_expectations": true,
+      "retrieval_attempts": 2,
+      "retrieved_log_ids": [],
+      "retrieved_span_ids": {
+        "4bb4e2ff6636ff7e2434f14b55168869": {
+          "agent.run": "01294aa4a4ee6aba",
+          "model.call": "562726ae91f7f7a8",
+          "tool.call": "ee627739a82a1a6b"
+        },
+        "7f44ee73f5b67063c21ea80530095cfb": {
+          "agent.run": "71934c52d089c69d",
+          "model.call": "e623584ad90086c4",
+          "tool.call": "941d90cc237c7a8c"
+        }
+      },
+      "retrieved_trace_ids": [
+        "4bb4e2ff6636ff7e2434f14b55168869",
+        "7f44ee73f5b67063c21ea80530095cfb"
+      ],
+      "scenario_id": "tg-gate3b-scenario-f08a15e4-299d-489c-9f27-c6cfee1cd70a",
+      "search_attempts": 4,
+      "trace_preservation_result": true,
+      "verdict_match": true
+    },
+    "pass_single_trace_correlated_logs": {
+      "actual_log_count": 2,
+      "actual_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "PASSED"
+      },
+      "actual_trace_count": 1,
+      "actual_verdict": "PASS",
+      "agent_run_id": "tg-gate3b-run-1f82dfda-f3fd-4231-80b5-6d19c175deee",
+      "discovered_trace_ids": [
+        "efa93821b6fe120798f51d9db4b20977"
+      ],
+      "elapsed_ms": 2534,
+      "emitted_log_ids": [
+        "tg-gate3b-log-aad71fad-6652-47b4-a760-67589e0f495e",
+        "tg-gate3b-log-4f72ea1d-34dc-4037-a132-5bcb8495c810"
+      ],
+      "emitted_span_ids": {
+        "efa93821b6fe120798f51d9db4b20977": {
+          "agent.run": "6312cdb8add9e6ec",
+          "model.call": "36612455e0901af9",
+          "tool.call": "d230a664493b97b5"
+        }
+      },
+      "emitted_trace_ids": [
+        "efa93821b6fe120798f51d9db4b20977"
+      ],
+      "evaluator_contract_match": true,
+      "exact_status_match": true,
+      "expected_log_count": 2,
+      "expected_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "PASSED"
+      },
+      "expected_trace_count": 1,
+      "expected_verdict": "PASS",
+      "log_preservation_result": true,
+      "matched_expectations": true,
+      "retrieval_attempts": 1,
+      "retrieved_log_ids": [
+        "tg-gate3b-log-4f72ea1d-34dc-4037-a132-5bcb8495c810",
+        "tg-gate3b-log-aad71fad-6652-47b4-a760-67589e0f495e"
+      ],
+      "retrieved_span_ids": {
+        "efa93821b6fe120798f51d9db4b20977": {
+          "agent.run": "6312cdb8add9e6ec",
+          "model.call": "36612455e0901af9",
+          "tool.call": "d230a664493b97b5"
+        }
+      },
+      "retrieved_trace_ids": [
+        "efa93821b6fe120798f51d9db4b20977"
+      ],
+      "scenario_id": "tg-gate3b-scenario-b9346652-1ca6-45ce-a0b5-a576438290ad",
+      "search_attempts": 2,
+      "trace_preservation_result": true,
+      "verdict_match": true
+    },
+    "pass_single_trace_without_logs": {
+      "actual_log_count": 0,
+      "actual_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "NOT_APPLICABLE"
+      },
+      "actual_trace_count": 1,
+      "actual_verdict": "PASS",
+      "agent_run_id": "tg-gate3b-run-20f179e8-ee11-4854-9ae7-0a25114d007e",
+      "discovered_trace_ids": [
+        "516e0eb73fffb1e82668560749d6f4e9"
+      ],
+      "elapsed_ms": 6422,
+      "emitted_log_ids": [],
+      "emitted_span_ids": {
+        "516e0eb73fffb1e82668560749d6f4e9": {
+          "agent.run": "079c83a54865f454",
+          "model.call": "8369b436f9dd908a",
+          "tool.call": "32d9df01d9f4c8f7"
+        }
+      },
+      "emitted_trace_ids": [
+        "516e0eb73fffb1e82668560749d6f4e9"
+      ],
+      "evaluator_contract_match": true,
+      "exact_status_match": true,
+      "expected_log_count": 0,
+      "expected_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "NOT_APPLICABLE"
+      },
+      "expected_trace_count": 1,
+      "expected_verdict": "PASS",
+      "log_preservation_result": true,
+      "matched_expectations": true,
+      "retrieval_attempts": 1,
+      "retrieved_log_ids": [],
+      "retrieved_span_ids": {
+        "516e0eb73fffb1e82668560749d6f4e9": {
+          "agent.run": "079c83a54865f454",
+          "model.call": "8369b436f9dd908a",
+          "tool.call": "32d9df01d9f4c8f7"
+        }
+      },
+      "retrieved_trace_ids": [
+        "516e0eb73fffb1e82668560749d6f4e9"
+      ],
+      "scenario_id": "tg-gate3b-scenario-3dff6fe5-19d5-493c-ad02-4239227525ff",
+      "search_attempts": 4,
+      "trace_preservation_result": true,
+      "verdict_match": true
+    },
+    "pass_with_warnings_uncorrelated_logs": {
+      "actual_log_count": 2,
+      "actual_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "FAILED"
+      },
+      "actual_trace_count": 1,
+      "actual_verdict": "PASS_WITH_WARNINGS",
+      "agent_run_id": "tg-gate3b-run-9cec5a82-dfa3-4759-b26b-59cf9982076e",
+      "discovered_trace_ids": [
+        "70f3e5961779836639848888d4533911"
+      ],
+      "elapsed_ms": 4483,
+      "emitted_log_ids": [
+        "tg-gate3b-log-e9144ff8-1a1e-49c1-8862-68e6b9cb9c41",
+        "tg-gate3b-log-a2c6354d-ea6b-4eae-94fe-d7a8acf26f02"
+      ],
+      "emitted_span_ids": {
+        "70f3e5961779836639848888d4533911": {
+          "agent.run": "6d757d08c688f63a",
+          "model.call": "90af6451c88602fb",
+          "tool.call": "bdb5fbbafca7db70"
+        }
+      },
+      "emitted_trace_ids": [
+        "70f3e5961779836639848888d4533911"
+      ],
+      "evaluator_contract_match": true,
+      "exact_status_match": true,
+      "expected_log_count": 2,
+      "expected_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "FAILED"
+      },
+      "expected_trace_count": 1,
+      "expected_verdict": "PASS_WITH_WARNINGS",
+      "log_preservation_result": true,
+      "matched_expectations": true,
+      "retrieval_attempts": 1,
+      "retrieved_log_ids": [
+        "tg-gate3b-log-a2c6354d-ea6b-4eae-94fe-d7a8acf26f02",
+        "tg-gate3b-log-e9144ff8-1a1e-49c1-8862-68e6b9cb9c41"
+      ],
+      "retrieved_span_ids": {
+        "70f3e5961779836639848888d4533911": {
+          "agent.run": "6d757d08c688f63a",
+          "model.call": "90af6451c88602fb",
+          "tool.call": "bdb5fbbafca7db70"
+        }
+      },
+      "retrieved_trace_ids": [
+        "70f3e5961779836639848888d4533911"
+      ],
+      "scenario_id": "tg-gate3b-scenario-239c336b-6a04-46c5-a2a9-3a31daee3531",
+      "search_attempts": 3,
+      "trace_preservation_result": true,
+      "verdict_match": true
+    }
+  },
+  "secret_scan_result": "passed",
+  "signoz_health": true,
+  "signoz_version": "v0.134.0",
+  "trace_otlp_endpoint": "http://localhost:4318/v1/traces"
+}

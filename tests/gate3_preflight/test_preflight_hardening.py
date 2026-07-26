@@ -431,6 +431,35 @@ def test_runner_exit_codes_success_contract_mismatch_config_infra_and_internal(c
     assert code == 4
 
 
+def test_unexpected_scenario_error_stops_and_exit_code_4_cannot_be_downgraded() -> None:
+    scenario_items = scenarios()
+    executed: list[str] = []
+
+    def emit(scenario, cfg):
+        executed.append(scenario.name)
+        if scenario.name == scenario_items[0].name:
+            raise RuntimeError("unsafe internal failure")
+        raise AssertionError("second scenario should not execute")
+
+    def evaluate(_trace):
+        current = scenario_items[1]
+        statuses = dict(current.expected_statuses)
+        statuses["TG-TEL-001"] = "FAILED"
+        return Eval(statuses, current.expected_verdict)
+
+    code = run_preflight(
+        config_factory=config,
+        client_factory=lambda cfg: EnvClient(),
+        scenario_factory=lambda: scenario_items,
+        emit=emit,
+        evaluate=evaluate,
+        write_json=lambda path, payload: None,
+    )
+
+    assert code == 4
+    assert executed == [scenario_items[0].name]
+
+
 def config() -> PreflightConfig:
     return PreflightConfig(
         signoz_base_url="http://localhost:8080",

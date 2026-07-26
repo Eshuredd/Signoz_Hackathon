@@ -189,6 +189,8 @@ def run_preflight(
         except Exception as exc:
             scenario_summary.update({"error_type": exc.__class__.__name__, "message": _sanitize_message(exc), "failed_stage": "scenario"})
             exit_code = 4
+            summary["scenarios"][scenario.name] = scenario_summary
+            break
         summary["scenarios"][scenario.name] = scenario_summary
 
     summary["live_exit_code"] = exit_code
