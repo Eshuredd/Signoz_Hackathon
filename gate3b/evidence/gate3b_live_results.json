@@ -4,22 +4,297 @@
     "log": "SIGNOZ_LOG_API",
     "trace": "TRACE_API_AUTHORITATIVE"
   },
-  "batch_id": "20260726T062608Z-b85db87f0ad4",
-  "captured_at": "2026-07-26T06:26:28.943828Z",
+  "batch_id": "20260726T064909Z-b52d5e03b90e",
+  "captured_at": "2026-07-26T06:49:30.970127Z",
   "completed_count": 4,
   "environment_check": {
     "authenticated_log_api_access": true,
     "authenticated_trace_api_access": true,
-    "checked_at": "2026-07-26T06:26:09.336753Z",
+    "checked_at": "2026-07-26T06:49:09.321601Z",
     "health_ok": true,
     "log_otlp_endpoint": "http://localhost:4318/v1/logs",
     "signoz_version": "v0.134.0",
     "trace_otlp_endpoint": "http://localhost:4318/v1/traces"
   },
+  "environment_evidence_source": "runner_observed_and_finalizer_cross_checked",
+  "environment_live_checks_repeated_by_finalizer": false,
   "failed_count": 0,
   "live_exit_code": 0,
   "log_otlp_endpoint": "http://localhost:4318/v1/logs",
   "matched_count": 4,
+  "recomputed_scenario_validation": {
+    "block_fragmented_run": {
+      "actual_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "FAILED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "NOT_APPLICABLE"
+      },
+      "actual_verdict": "BLOCK",
+      "agent_run_id": "tg-gate3b-run-9412e3a1-01ee-4812-bb1b-ae32c8f44d20",
+      "discovered_trace_ids": [
+        "45339e0d6c877f2c12b7035a4003813e",
+        "8d335f955da566ccee59b74de2487a91"
+      ],
+      "emitted_log_ids": [],
+      "emitted_trace_ids": [
+        "45339e0d6c877f2c12b7035a4003813e",
+        "8d335f955da566ccee59b74de2487a91"
+      ],
+      "log_count": 0,
+      "log_preservation_details": {
+        "agent_run_id_preserved": true,
+        "body_preserved": true,
+        "errors": [],
+        "intentional_mismatch_preserved": true,
+        "log_ids_match": true,
+        "passed": true,
+        "resource_attributes_preserved": true,
+        "scenario_correlation_match": true,
+        "service_identity_preserved": true,
+        "timestamp_preserved": true,
+        "trace_span_correlation_match": true
+      },
+      "matched_expectations": true,
+      "preservation_passed": true,
+      "retrieved_log_ids": [],
+      "retrieved_trace_ids": [
+        "45339e0d6c877f2c12b7035a4003813e",
+        "8d335f955da566ccee59b74de2487a91"
+      ],
+      "scenario_id": "tg-gate3b-scenario-5cc9d993-a6b8-476c-97aa-1e5b1431aca6",
+      "trace_count": 2,
+      "trace_preservation_details": {
+        "canonical_attributes_match": true,
+        "errors": [],
+        "fragmentation_preserved": true,
+        "parent_relationships_match": true,
+        "passed": true,
+        "run_id_preserved": true,
+        "scenario_correlation_match": true,
+        "service_identity_preserved": true,
+        "span_count_match": true,
+        "span_ids_match": true,
+        "span_names_match": true,
+        "timing_preserved": true,
+        "trace_ids_match": true
+      }
+    },
+    "pass_single_trace_correlated_logs": {
+      "actual_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "PASSED"
+      },
+      "actual_verdict": "PASS",
+      "agent_run_id": "tg-gate3b-run-487b0f0d-c8cb-4f84-88d6-26d9b37b9ad2",
+      "discovered_trace_ids": [
+        "e6d66f5cc92193e37be62da9d1cf5b00"
+      ],
+      "emitted_log_ids": [
+        "tg-gate3b-log-a1c8e771-da86-4211-a0d7-84330bdf7982",
+        "tg-gate3b-log-04adea8e-cb23-423e-a553-fdd30b8fab46"
+      ],
+      "emitted_trace_ids": [
+        "e6d66f5cc92193e37be62da9d1cf5b00"
+      ],
+      "log_count": 2,
+      "log_preservation_details": {
+        "agent_run_id_preserved": true,
+        "body_preserved": true,
+        "errors": [],
+        "intentional_mismatch_preserved": true,
+        "log_ids_match": true,
+        "passed": true,
+        "resource_attributes_preserved": true,
+        "scenario_correlation_match": true,
+        "service_identity_preserved": true,
+        "timestamp_preserved": true,
+        "trace_span_correlation_match": true
+      },
+      "matched_expectations": true,
+      "preservation_passed": true,
+      "retrieved_log_ids": [
+        "tg-gate3b-log-04adea8e-cb23-423e-a553-fdd30b8fab46",
+        "tg-gate3b-log-a1c8e771-da86-4211-a0d7-84330bdf7982"
+      ],
+      "retrieved_trace_ids": [
+        "e6d66f5cc92193e37be62da9d1cf5b00"
+      ],
+      "scenario_id": "tg-gate3b-scenario-86008f8d-20e8-4547-8aac-3fbcdbcf81dc",
+      "trace_count": 1,
+      "trace_preservation_details": {
+        "canonical_attributes_match": true,
+        "errors": [],
+        "fragmentation_preserved": true,
+        "parent_relationships_match": true,
+        "passed": true,
+        "run_id_preserved": true,
+        "scenario_correlation_match": true,
+        "service_identity_preserved": true,
+        "span_count_match": true,
+        "span_ids_match": true,
+        "span_names_match": true,
+        "timing_preserved": true,
+        "trace_ids_match": true
+      }
+    },
+    "pass_single_trace_without_logs": {
+      "actual_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "NOT_APPLICABLE"
+      },
+      "actual_verdict": "PASS",
+      "agent_run_id": "tg-gate3b-run-80c4461e-bbe2-4572-be77-e5837affef30",
+      "discovered_trace_ids": [
+        "1ff5721674c6c8bb873e8b55c33f312b"
+      ],
+      "emitted_log_ids": [],
+      "emitted_trace_ids": [
+        "1ff5721674c6c8bb873e8b55c33f312b"
+      ],
+      "log_count": 0,
+      "log_preservation_details": {
+        "agent_run_id_preserved": true,
+        "body_preserved": true,
+        "errors": [],
+        "intentional_mismatch_preserved": true,
+        "log_ids_match": true,
+        "passed": true,
+        "resource_attributes_preserved": true,
+        "scenario_correlation_match": true,
+        "service_identity_preserved": true,
+        "timestamp_preserved": true,
+        "trace_span_correlation_match": true
+      },
+      "matched_expectations": true,
+      "preservation_passed": true,
+      "retrieved_log_ids": [],
+      "retrieved_trace_ids": [
+        "1ff5721674c6c8bb873e8b55c33f312b"
+      ],
+      "scenario_id": "tg-gate3b-scenario-a9c67f9c-ce44-4dc1-8c15-2919e1afcdca",
+      "trace_count": 1,
+      "trace_preservation_details": {
+        "canonical_attributes_match": true,
+        "errors": [],
+        "fragmentation_preserved": true,
+        "parent_relationships_match": true,
+        "passed": true,
+        "run_id_preserved": true,
+        "scenario_correlation_match": true,
+        "service_identity_preserved": true,
+        "span_count_match": true,
+        "span_ids_match": true,
+        "span_names_match": true,
+        "timing_preserved": true,
+        "trace_ids_match": true
+      }
+    },
+    "pass_with_warnings_uncorrelated_logs": {
+      "actual_rule_statuses": {
+        "TG-STR-001": "PASSED",
+        "TG-STR-002": "PASSED",
+        "TG-STR-003": "PASSED",
+        "TG-STR-004": "PASSED",
+        "TG-STR-005": "PASSED",
+        "TG-TEL-001": "PASSED",
+        "TG-TEL-002": "PASSED",
+        "TG-TEL-003A": "PASSED",
+        "TG-TEL-003B": "PASSED",
+        "TG-TEL-004": "PASSED",
+        "TG-TEL-005": "PASSED",
+        "TG-TEL-006": "PASSED",
+        "TG-TEL-007": "PASSED",
+        "TG-TEL-008": "FAILED"
+      },
+      "actual_verdict": "PASS_WITH_WARNINGS",
+      "agent_run_id": "tg-gate3b-run-11aa0f6a-3f2f-42f7-9903-872a065b065d",
+      "discovered_trace_ids": [
+        "5bd5e7f074e4e4e46279b11babcec71e"
+      ],
+      "emitted_log_ids": [
+        "tg-gate3b-log-d8b85b13-5726-40a2-a40c-0dbf85ccd630",
+        "tg-gate3b-log-33a6c8a4-7f87-47bb-81cc-92808c81ce38"
+      ],
+      "emitted_trace_ids": [
+        "5bd5e7f074e4e4e46279b11babcec71e"
+      ],
+      "log_count": 2,
+      "log_preservation_details": {
+        "agent_run_id_preserved": true,
+        "body_preserved": true,
+        "errors": [],
+        "intentional_mismatch_preserved": true,
+        "log_ids_match": true,
+        "passed": true,
+        "resource_attributes_preserved": true,
+        "scenario_correlation_match": true,
+        "service_identity_preserved": true,
+        "timestamp_preserved": true,
+        "trace_span_correlation_match": true
+      },
+      "matched_expectations": true,
+      "preservation_passed": true,
+      "retrieved_log_ids": [
+        "tg-gate3b-log-33a6c8a4-7f87-47bb-81cc-92808c81ce38",
+        "tg-gate3b-log-d8b85b13-5726-40a2-a40c-0dbf85ccd630"
+      ],
+      "retrieved_trace_ids": [
+        "5bd5e7f074e4e4e46279b11babcec71e"
+      ],
+      "scenario_id": "tg-gate3b-scenario-29c78064-cb97-4dbb-9aba-b5d9bbe1ad7b",
+      "trace_count": 1,
+      "trace_preservation_details": {
+        "canonical_attributes_match": true,
+        "errors": [],
+        "fragmentation_preserved": true,
+        "parent_relationships_match": true,
+        "passed": true,
+        "run_id_preserved": true,
+        "scenario_correlation_match": true,
+        "service_identity_preserved": true,
+        "span_count_match": true,
+        "span_ids_match": true,
+        "span_names_match": true,
+        "timing_preserved": true,
+        "trace_ids_match": true
+      }
+    }
+  },
   "sanitized": true,
   "scenario_count": 4,
   "scenario_results": {
@@ -43,28 +318,28 @@
       },
       "actual_trace_count": 2,
       "actual_verdict": "BLOCK",
-      "agent_run_id": "tg-gate3b-run-5d7f98b2-5fb8-4a29-867d-4d4c98938624",
+      "agent_run_id": "tg-gate3b-run-9412e3a1-01ee-4812-bb1b-ae32c8f44d20",
       "discovered_trace_ids": [
-        "018a1f639bb8df4aa5df1bbf76a436fe",
-        "8ee68e062775b3b92842f30dfd5ed403"
+        "45339e0d6c877f2c12b7035a4003813e",
+        "8d335f955da566ccee59b74de2487a91"
       ],
-      "elapsed_ms": 6402,
+      "elapsed_ms": 6422,
       "emitted_log_ids": [],
       "emitted_span_ids": {
-        "018a1f639bb8df4aa5df1bbf76a436fe": {
-          "agent.run": "bf15d9d22f001804",
-          "model.call": "55a78983f5bdf212",
-          "tool.call": "b3b387c48f19f61d"
+        "45339e0d6c877f2c12b7035a4003813e": {
+          "agent.run": "1761c9bdf64a88ec",
+          "model.call": "4cac2d4a6c348f72",
+          "tool.call": "878c58f001d5a4c4"
         },
-        "8ee68e062775b3b92842f30dfd5ed403": {
-          "agent.run": "fd4f804f39139526",
-          "model.call": "630644fb8affa7ea",
-          "tool.call": "f102fbebde26a202"
+        "8d335f955da566ccee59b74de2487a91": {
+          "agent.run": "4309c0e115b5bb99",
+          "model.call": "2202aa52cf4fd028",
+          "tool.call": "a130eb8f40ee9c60"
         }
       },
       "emitted_trace_ids": [
-        "018a1f639bb8df4aa5df1bbf76a436fe",
-        "8ee68e062775b3b92842f30dfd5ed403"
+        "45339e0d6c877f2c12b7035a4003813e",
+        "8d335f955da566ccee59b74de2487a91"
       ],
       "evaluator_contract_match": true,
       "exact_status_match": true,
@@ -107,22 +382,22 @@
       "retrieval_attempts": 2,
       "retrieved_log_ids": [],
       "retrieved_span_ids": {
-        "018a1f639bb8df4aa5df1bbf76a436fe": {
-          "agent.run": "bf15d9d22f001804",
-          "model.call": "55a78983f5bdf212",
-          "tool.call": "b3b387c48f19f61d"
+        "45339e0d6c877f2c12b7035a4003813e": {
+          "agent.run": "1761c9bdf64a88ec",
+          "model.call": "4cac2d4a6c348f72",
+          "tool.call": "878c58f001d5a4c4"
         },
-        "8ee68e062775b3b92842f30dfd5ed403": {
-          "agent.run": "fd4f804f39139526",
-          "model.call": "630644fb8affa7ea",
-          "tool.call": "f102fbebde26a202"
+        "8d335f955da566ccee59b74de2487a91": {
+          "agent.run": "4309c0e115b5bb99",
+          "model.call": "2202aa52cf4fd028",
+          "tool.call": "a130eb8f40ee9c60"
         }
       },
       "retrieved_trace_ids": [
-        "018a1f639bb8df4aa5df1bbf76a436fe",
-        "8ee68e062775b3b92842f30dfd5ed403"
+        "45339e0d6c877f2c12b7035a4003813e",
+        "8d335f955da566ccee59b74de2487a91"
       ],
-      "scenario_id": "tg-gate3b-scenario-41b97cdc-2be0-443b-9c50-e2a3b9d1c46f",
+      "scenario_id": "tg-gate3b-scenario-5cc9d993-a6b8-476c-97aa-1e5b1431aca6",
       "search_attempts": 4,
       "trace_preservation_details": {
         "canonical_attributes_match": true,
@@ -162,24 +437,24 @@
       },
       "actual_trace_count": 1,
       "actual_verdict": "PASS",
-      "agent_run_id": "tg-gate3b-run-fb535478-4485-4630-897d-a7fa4d6d0b6e",
+      "agent_run_id": "tg-gate3b-run-487b0f0d-c8cb-4f84-88d6-26d9b37b9ad2",
       "discovered_trace_ids": [
-        "7564fffe6918c72292e296bf2a9db271"
+        "e6d66f5cc92193e37be62da9d1cf5b00"
       ],
-      "elapsed_ms": 2318,
+      "elapsed_ms": 4372,
       "emitted_log_ids": [
-        "tg-gate3b-log-98e1be80-2639-4d2b-b7a3-c4f78e6b9877",
-        "tg-gate3b-log-f21190d5-d05e-47fe-9786-41e11543b4bb"
+        "tg-gate3b-log-a1c8e771-da86-4211-a0d7-84330bdf7982",
+        "tg-gate3b-log-04adea8e-cb23-423e-a553-fdd30b8fab46"
       ],
       "emitted_span_ids": {
-        "7564fffe6918c72292e296bf2a9db271": {
-          "agent.run": "b4fce1804ab56703",
-          "model.call": "498ad125555094c1",
-          "tool.call": "426889146b3d0cce"
+        "e6d66f5cc92193e37be62da9d1cf5b00": {
+          "agent.run": "68ae068db740678a",
+          "model.call": "fa6becb61e03f9bd",
+          "tool.call": "00e56ec6854fd96f"
         }
       },
       "emitted_trace_ids": [
-        "7564fffe6918c72292e296bf2a9db271"
+        "e6d66f5cc92193e37be62da9d1cf5b00"
       ],
       "evaluator_contract_match": true,
       "exact_status_match": true,
@@ -221,21 +496,21 @@
       "preservation_passed": true,
       "retrieval_attempts": 1,
       "retrieved_log_ids": [
-        "tg-gate3b-log-98e1be80-2639-4d2b-b7a3-c4f78e6b9877",
-        "tg-gate3b-log-f21190d5-d05e-47fe-9786-41e11543b4bb"
+        "tg-gate3b-log-04adea8e-cb23-423e-a553-fdd30b8fab46",
+        "tg-gate3b-log-a1c8e771-da86-4211-a0d7-84330bdf7982"
       ],
       "retrieved_span_ids": {
-        "7564fffe6918c72292e296bf2a9db271": {
-          "agent.run": "b4fce1804ab56703",
-          "model.call": "498ad125555094c1",
-          "tool.call": "426889146b3d0cce"
+        "e6d66f5cc92193e37be62da9d1cf5b00": {
+          "agent.run": "68ae068db740678a",
+          "model.call": "fa6becb61e03f9bd",
+          "tool.call": "00e56ec6854fd96f"
         }
       },
       "retrieved_trace_ids": [
-        "7564fffe6918c72292e296bf2a9db271"
+        "e6d66f5cc92193e37be62da9d1cf5b00"
       ],
-      "scenario_id": "tg-gate3b-scenario-ef4fc82d-4284-4131-a0fd-afe47ff62fa7",
-      "search_attempts": 2,
+      "scenario_id": "tg-gate3b-scenario-86008f8d-20e8-4547-8aac-3fbcdbcf81dc",
+      "search_attempts": 3,
       "trace_preservation_details": {
         "canonical_attributes_match": true,
         "errors": [],
@@ -274,21 +549,21 @@
       },
       "actual_trace_count": 1,
       "actual_verdict": "PASS",
-      "agent_run_id": "tg-gate3b-run-c25dea16-b599-48e5-8699-64698777a719",
+      "agent_run_id": "tg-gate3b-run-80c4461e-bbe2-4572-be77-e5837affef30",
       "discovered_trace_ids": [
-        "efa76806e4596a53571b100527e25dae"
+        "1ff5721674c6c8bb873e8b55c33f312b"
       ],
-      "elapsed_ms": 6354,
+      "elapsed_ms": 4270,
       "emitted_log_ids": [],
       "emitted_span_ids": {
-        "efa76806e4596a53571b100527e25dae": {
-          "agent.run": "509f919d7a073ab3",
-          "model.call": "8a9adb0fbb5908c2",
-          "tool.call": "39078083a7e3fd2f"
+        "1ff5721674c6c8bb873e8b55c33f312b": {
+          "agent.run": "8806a4e9459f47fb",
+          "model.call": "7d029cc6219d286a",
+          "tool.call": "302dea9ca491e124"
         }
       },
       "emitted_trace_ids": [
-        "efa76806e4596a53571b100527e25dae"
+        "1ff5721674c6c8bb873e8b55c33f312b"
       ],
       "evaluator_contract_match": true,
       "exact_status_match": true,
@@ -331,17 +606,17 @@
       "retrieval_attempts": 1,
       "retrieved_log_ids": [],
       "retrieved_span_ids": {
-        "efa76806e4596a53571b100527e25dae": {
-          "agent.run": "509f919d7a073ab3",
-          "model.call": "8a9adb0fbb5908c2",
-          "tool.call": "39078083a7e3fd2f"
+        "1ff5721674c6c8bb873e8b55c33f312b": {
+          "agent.run": "8806a4e9459f47fb",
+          "model.call": "7d029cc6219d286a",
+          "tool.call": "302dea9ca491e124"
         }
       },
       "retrieved_trace_ids": [
-        "efa76806e4596a53571b100527e25dae"
+        "1ff5721674c6c8bb873e8b55c33f312b"
       ],
-      "scenario_id": "tg-gate3b-scenario-6068e56a-a620-496c-a322-7d458e4916bc",
-      "search_attempts": 4,
+      "scenario_id": "tg-gate3b-scenario-a9c67f9c-ce44-4dc1-8c15-2919e1afcdca",
+      "search_attempts": 3,
       "trace_preservation_details": {
         "canonical_attributes_match": true,
         "errors": [],
@@ -380,24 +655,24 @@
       },
       "actual_trace_count": 1,
       "actual_verdict": "PASS_WITH_WARNINGS",
-      "agent_run_id": "tg-gate3b-run-6e87a2bc-e4b5-4659-a8b8-c3ac56576607",
+      "agent_run_id": "tg-gate3b-run-11aa0f6a-3f2f-42f7-9903-872a065b065d",
       "discovered_trace_ids": [
-        "d88287bc7e79ec13bd005970ca6f3b4c"
+        "5bd5e7f074e4e4e46279b11babcec71e"
       ],
-      "elapsed_ms": 4429,
+      "elapsed_ms": 6482,
       "emitted_log_ids": [
-        "tg-gate3b-log-18dbd268-483d-4c93-a6e9-dddf93b4d4fb",
-        "tg-gate3b-log-a5ed3676-e3fa-4c39-8eb9-a2be1783d134"
+        "tg-gate3b-log-d8b85b13-5726-40a2-a40c-0dbf85ccd630",
+        "tg-gate3b-log-33a6c8a4-7f87-47bb-81cc-92808c81ce38"
       ],
       "emitted_span_ids": {
-        "d88287bc7e79ec13bd005970ca6f3b4c": {
-          "agent.run": "bd3869848634204a",
-          "model.call": "e5e0e3c3335ed0a1",
-          "tool.call": "139d5b2c7dd9362b"
+        "5bd5e7f074e4e4e46279b11babcec71e": {
+          "agent.run": "a291d90423b288b1",
+          "model.call": "ea0bf381057e13a6",
+          "tool.call": "64d3660d0fb3ebca"
         }
       },
       "emitted_trace_ids": [
-        "d88287bc7e79ec13bd005970ca6f3b4c"
+        "5bd5e7f074e4e4e46279b11babcec71e"
       ],
       "evaluator_contract_match": true,
       "exact_status_match": true,
@@ -439,21 +714,21 @@
       "preservation_passed": true,
       "retrieval_attempts": 1,
       "retrieved_log_ids": [
-        "tg-gate3b-log-18dbd268-483d-4c93-a6e9-dddf93b4d4fb",
-        "tg-gate3b-log-a5ed3676-e3fa-4c39-8eb9-a2be1783d134"
+        "tg-gate3b-log-33a6c8a4-7f87-47bb-81cc-92808c81ce38",
+        "tg-gate3b-log-d8b85b13-5726-40a2-a40c-0dbf85ccd630"
       ],
       "retrieved_span_ids": {
-        "d88287bc7e79ec13bd005970ca6f3b4c": {
-          "agent.run": "bd3869848634204a",
-          "model.call": "e5e0e3c3335ed0a1",
-          "tool.call": "139d5b2c7dd9362b"
+        "5bd5e7f074e4e4e46279b11babcec71e": {
+          "agent.run": "a291d90423b288b1",
+          "model.call": "ea0bf381057e13a6",
+          "tool.call": "64d3660d0fb3ebca"
         }
       },
       "retrieved_trace_ids": [
-        "d88287bc7e79ec13bd005970ca6f3b4c"
+        "5bd5e7f074e4e4e46279b11babcec71e"
       ],
-      "scenario_id": "tg-gate3b-scenario-3f059835-18c2-445f-bc5c-4cb2a3701d7d",
-      "search_attempts": 3,
+      "scenario_id": "tg-gate3b-scenario-29c78064-cb97-4dbb-9aba-b5d9bbe1ad7b",
+      "search_attempts": 4,
       "trace_preservation_details": {
         "canonical_attributes_match": true,
         "errors": [],

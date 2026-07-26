@@ -55,18 +55,19 @@ def _import_attr(path: str) -> Any:
     return getattr(module, attr_name)
 
 
-def _select_component(name: str) -> tuple[Any, str, bool, list[str]]:
-    attempted: list[str] = []
+def _select_component(name: str) -> tuple[Any, str, bool, list[str], list[str]]:
+    public_attempted: list[str] = []
+    private_attempted: list[str] = []
     for path in PUBLIC_CANDIDATES[name]:
-        attempted.append(path)
+        public_attempted.append(path)
         try:
-            return _import_attr(path), path, False, attempted
+            return _import_attr(path), path, False, public_attempted, private_attempted
         except (ImportError, AttributeError, ModuleNotFoundError):
             pass
     for path in PRIVATE_CANDIDATES[name]:
-        attempted.append(path)
+        private_attempted.append(path)
         try:
-            return _import_attr(path), path, True, attempted
+            return _import_attr(path), path, True, public_attempted, private_attempted
         except (ImportError, AttributeError, ModuleNotFoundError):
             pass
     raise Gate3BLogCompatibilityError(f"No supported OpenTelemetry import path is available for {name}.")
@@ -75,13 +76,15 @@ def _select_component(name: str) -> tuple[Any, str, bool, list[str]]:
 _SELECTED: dict[str, Any] = {}
 _SELECTED_PATHS: dict[str, str] = {}
 _PUBLIC_ATTEMPTED: list[str] = []
+_PRIVATE_ATTEMPTED: list[str] = []
 _PRIVATE_FALLBACK_USED = False
 
 for _name in PUBLIC_CANDIDATES:
-    _value, _path, _private, _attempted = _select_component(_name)
+    _value, _path, _private, _public_attempted, _private_attempted = _select_component(_name)
     _SELECTED[_name] = _value
     _SELECTED_PATHS[_name] = _path
-    _PUBLIC_ATTEMPTED.extend(_attempted)
+    _PUBLIC_ATTEMPTED.extend(_public_attempted)
+    _PRIVATE_ATTEMPTED.extend(_private_attempted)
     _PRIVATE_FALLBACK_USED = _PRIVATE_FALLBACK_USED or _private
 
 OTLPLogExporter = _SELECTED["OTLPLogExporter"]
@@ -105,6 +108,8 @@ def compatibility_contract() -> dict[str, Any]:
         },
         "otlp_exporter_path": _SELECTED_PATHS["OTLPLogExporter"],
         "public_paths_attempted": list(_PUBLIC_ATTEMPTED),
+        "private_paths_attempted": list(_PRIVATE_ATTEMPTED),
+        "selected_paths": dict(_SELECTED_PATHS),
         "private_fallback_used": _PRIVATE_FALLBACK_USED,
         "opentelemetry_versions": dict(OPENTELEMETRY_VERSIONS),
     }

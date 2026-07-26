@@ -25,27 +25,38 @@
     },
     "otlp_exporter_path": "opentelemetry.exporter.otlp.proto.http._log_exporter:OTLPLogExporter",
     "private_fallback_used": true,
+    "private_paths_attempted": [
+      "opentelemetry.exporter.otlp.proto.http._log_exporter:OTLPLogExporter",
+      "opentelemetry.sdk._logs:LoggerProvider",
+      "opentelemetry.sdk._logs:LoggingHandler",
+      "opentelemetry.sdk._logs.export:InMemoryLogExporter",
+      "opentelemetry.sdk._logs.export:SimpleLogRecordProcessor",
+      "opentelemetry.sdk._logs.export:LogExportResult",
+      "opentelemetry.sdk._logs.export:LogRecordExportResult"
+    ],
     "processor_path": "opentelemetry.sdk._logs.export:SimpleLogRecordProcessor",
     "public_paths_attempted": [
       "opentelemetry.exporter.otlp.proto.http.log_exporter:OTLPLogExporter",
-      "opentelemetry.exporter.otlp.proto.http._log_exporter:OTLPLogExporter",
       "opentelemetry.sdk.logs:LoggerProvider",
-      "opentelemetry.sdk._logs:LoggerProvider",
       "opentelemetry.sdk.logs:LoggingHandler",
-      "opentelemetry.sdk._logs:LoggingHandler",
       "opentelemetry.sdk.logs.export:InMemoryLogExporter",
       "opentelemetry.sdk.logs.export:InMemoryLogRecordExporter",
-      "opentelemetry.sdk._logs.export:InMemoryLogExporter",
       "opentelemetry.sdk.logs.export:SimpleLogRecordProcessor",
-      "opentelemetry.sdk._logs.export:SimpleLogRecordProcessor",
       "opentelemetry.sdk.logs.export:LogExportResult",
-      "opentelemetry.sdk._logs.export:LogExportResult",
-      "opentelemetry.sdk.logs.export:LogRecordExportResult",
-      "opentelemetry.sdk._logs.export:LogRecordExportResult"
+      "opentelemetry.sdk.logs.export:LogRecordExportResult"
     ],
     "result_enum_paths": {
       "LogExportResult": "opentelemetry.sdk._logs.export:LogExportResult",
       "LogRecordExportResult": "opentelemetry.sdk._logs.export:LogRecordExportResult"
+    },
+    "selected_paths": {
+      "InMemoryLogExporter": "opentelemetry.sdk._logs.export:InMemoryLogExporter",
+      "LogExportResult": "opentelemetry.sdk._logs.export:LogExportResult",
+      "LogRecordExportResult": "opentelemetry.sdk._logs.export:LogRecordExportResult",
+      "LoggerProvider": "opentelemetry.sdk._logs:LoggerProvider",
+      "LoggingHandler": "opentelemetry.sdk._logs:LoggingHandler",
+      "OTLPLogExporter": "opentelemetry.exporter.otlp.proto.http._log_exporter:OTLPLogExporter",
+      "SimpleLogRecordProcessor": "opentelemetry.sdk._logs.export:SimpleLogRecordProcessor"
     }
   },
   "opentelemetry_otlp_exporter_import_path_used": "opentelemetry.exporter.otlp.proto.http._log_exporter:OTLPLogExporter",

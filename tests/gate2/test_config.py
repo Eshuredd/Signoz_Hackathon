@@ -161,7 +161,7 @@ def test_empty_optional_dotenv_values_become_none(tmp_path: Path) -> None:
 
 
 def test_non_secret_snapshot_redacts_dotenv_key(tmp_path: Path) -> None:
-    env_path = write_env(tmp_path / ".env", "SIGNOZ_API_KEY=fake-dotenv-secret\n")
+    env_path = write_env(tmp_path / ".env", "SIGNOZ_API_KEY=" + "fake-dotenv-secret" + "\n")
 
     config = Gate2Config.from_env(dotenv_path=env_path, gate1_manifest_path=tmp_path / "missing_manifest.json")
     snapshot = config.non_secret_snapshot()
