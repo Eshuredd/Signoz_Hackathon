@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,6 +26,13 @@ from .verification import verify_preservation
 
 
 KNOWN_INFRA = (*NON_RETRY, Gate3BInfrastructureError, Gate3BTraceExportError, Gate3BLogExportError, Gate3BLogRetrievalError)
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+@dataclass(frozen=True)
+class GitProvenance:
+    source_commit_sha: str
+    source_worktree_clean: bool
 
 
 @dataclass(frozen=True)
@@ -35,6 +44,7 @@ class RunnerDependencies:
     trace_poll: Callable[..., object] = poll_and_retrieve_traces
     log_poll: Callable[..., object] = poll_and_retrieve_logs
     evaluator: Callable[..., object] = evaluate_run_bundle
+    provenance_factory: Callable[[], GitProvenance] | None = None
     write_json: Callable[[Path, dict[str, object]], None] | None = None
 
 
@@ -49,6 +59,11 @@ def run_gate3b(
     runtime = Path(".traceguard") / "runtime" / "gate3b" / batch_id
     summary: dict[str, object] = {"batch_id": batch_id, "sanitized": True, "scenarios": {}, "authoritative_sources": {"trace": AUTHORITATIVE_TRACE_SOURCE, "log": AUTHORITATIVE_LOG_SOURCE}}
     try:
+        provenance = (deps.provenance_factory or current_git_provenance)()
+        summary["source_commit_sha"] = provenance.source_commit_sha
+        summary["source_worktree_clean"] = provenance.source_worktree_clean
+        if not provenance.source_worktree_clean:
+            raise Gate3BConfigError("Gate 3B live run requires a clean working tree.")
         validate_scenario_catalogue(SCENARIO_DEFINITIONS)
         if selected_scenario_name:
             selected = (get_definition(selected_scenario_name),)
@@ -224,6 +239,27 @@ def _finish(runtime: Path, summary: dict[str, object], code: int, stage: str, ex
 def write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
+
+
+def current_git_provenance() -> GitProvenance:
+    root = _run_git(["rev-parse", "--show-toplevel"])
+    if Path(root).resolve() != REPO_ROOT.resolve():
+        raise Gate3BConfigError("Git repository root does not match Gate 3B repository root.")
+    head = _run_git(["rev-parse", "HEAD"])
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        raise Gate3BConfigError("Git HEAD is not a 40-character lowercase hexadecimal SHA.")
+    status = _run_git(["status", "--porcelain"], allow_empty=True)
+    return GitProvenance(head, status == "")
+
+
+def _run_git(args: list[str], *, allow_empty: bool = False) -> str:
+    completed = subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, shell=False, timeout=30)
+    if completed.returncode != 0:
+        raise Gate3BConfigError("Git provenance command failed.")
+    text = completed.stdout.strip()
+    if not allow_empty and not text:
+        raise Gate3BConfigError("Git provenance command returned empty output.")
+    return text
 
 
 def sanitize_message(exc: Exception) -> str:

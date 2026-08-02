@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -10,10 +11,18 @@ from gate3.evaluator import evaluate_run_bundle
 from gate3.trace_loader import load_run_bundle_payload
 from gate3b import finalize_evidence
 from gate3b.bridge import build_gate3_run_bundle
-from gate3b.finalize_evidence import EXPECTED_VERIFICATION_COMMANDS, PYTEST_VERIFICATION_NAMES, REQUIRED_VERIFICATION_NAMES, VerificationCommandResult
+from gate3b.finalize_evidence import EXPECTED_VERIFICATION_COMMANDS, PYTEST_VERIFICATION_NAMES, REQUIRED_VERIFICATION_NAMES, GitProvenance, VerificationCommandResult
 from gate3b.models import LOG_ID_ATTR, TRACE_BATCH_ATTR, TRACE_SCENARIO_ATTR, TRACE_SCENARIO_NAME_ATTR, LogEmissionResult, RetrievedLog, RuntimeScenario, TraceEmissionResult
 from gate3b.scenarios import SCENARIO_DEFINITIONS
 from gate3b.verification import verify_preservation
+
+
+VALID_BATCH_ID = "20260101T000000Z-abcdef123456"
+SOURCE_SHA = "1" * 40
+
+
+def clean_provenance(_summary: dict[str, object]) -> GitProvenance:
+    return GitProvenance(SOURCE_SHA, True, True)
 
 
 def complete_summary() -> dict[str, object]:
@@ -75,8 +84,21 @@ def complete_summary() -> dict[str, object]:
             "evaluator_contract_match": True,
         }
     return {
-        "batch_id": "batch-ok",
+        "batch_id": VALID_BATCH_ID,
         "captured_at": "2026-01-01T00:00:00Z",
+        "source_commit_sha": SOURCE_SHA,
+        "source_worktree_clean": True,
+        "config": {
+            "SIGNOZ_BASE_URL": "http://localhost:8080",
+            "SIGNOZ_API_KEY": "<set>",
+            "TRACEGUARD_OTLP_TRACES_ENDPOINT": "http://localhost:4318/v1/traces",
+            "TRACEGUARD_OTLP_LOGS_ENDPOINT": "http://localhost:4318/v1/logs",
+            "SIGNOZ_REQUEST_TIMEOUT_SECONDS": 10.0,
+            "TRACEGUARD_GATE3B_INGEST_TIMEOUT_SECONDS": 60.0,
+            "TRACEGUARD_GATE3B_POLL_INTERVAL_SECONDS": 2.0,
+            "TRACEGUARD_OTLP_TIMEOUT_SECONDS": 10.0,
+            "TRACEGUARD_GATE3B_SERVICE_NAME": "svc",
+        },
         "scenario_count": 4,
         "completed_count": 4,
         "matched_count": 4,
@@ -101,7 +123,7 @@ def write_json(path: Path, payload: object) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8")
 
 
-def write_complete_runtime(root: Path, batch_id: str = "batch") -> dict[str, object]:
+def write_complete_runtime(root: Path, batch_id: str = VALID_BATCH_ID) -> dict[str, object]:
     runtime = root / batch_id
     if runtime.exists():
         shutil.rmtree(runtime)
@@ -117,6 +139,19 @@ def write_complete_runtime(root: Path, batch_id: str = "batch") -> dict[str, obj
     summary: dict[str, object] = {
         "batch_id": batch_id,
         "captured_at": "2026-01-01T00:00:00Z",
+        "source_commit_sha": SOURCE_SHA,
+        "source_worktree_clean": True,
+        "config": {
+            "SIGNOZ_BASE_URL": "http://localhost:8080",
+            "SIGNOZ_API_KEY": "<set>",
+            "TRACEGUARD_OTLP_TRACES_ENDPOINT": "http://localhost:4318/v1/traces",
+            "TRACEGUARD_OTLP_LOGS_ENDPOINT": "http://localhost:4318/v1/logs",
+            "SIGNOZ_REQUEST_TIMEOUT_SECONDS": 10.0,
+            "TRACEGUARD_GATE3B_INGEST_TIMEOUT_SECONDS": 60.0,
+            "TRACEGUARD_GATE3B_POLL_INTERVAL_SECONDS": 2.0,
+            "TRACEGUARD_OTLP_TIMEOUT_SECONDS": 10.0,
+            "TRACEGUARD_GATE3B_SERVICE_NAME": "svc",
+        },
         "scenario_count": 4,
         "completed_count": 4,
         "matched_count": 4,
@@ -250,34 +285,36 @@ def test_finalizer_rejects_unknown_batch(monkeypatch, tmp_path: Path) -> None:
 
 
 def test_finalizer_rejects_partial_batch(monkeypatch, tmp_path: Path) -> None:
-    runtime = tmp_path / "batch" 
+    runtime = tmp_path / VALID_BATCH_ID
     runtime.mkdir()
     summary = complete_summary()
     summary["scenario_count"] = 1
     (runtime / "gate3b_summary.json").write_text(json.dumps(summary), encoding="utf-8")
     monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
-    assert finalize_evidence.main(["--batch-id", "batch"]) == 1
+    assert finalize_evidence.main(["--batch-id", VALID_BATCH_ID]) == 1
 
 
 def test_dry_run_writes_no_evidence(monkeypatch, tmp_path: Path) -> None:
     evidence = tmp_path / "evidence"
-    write_complete_runtime(tmp_path, "batch")
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
     monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
     monkeypatch.setattr(finalize_evidence, "EVIDENCE_ROOT", evidence)
     monkeypatch.setattr(finalize_evidence, "run_verification_commands", complete_results)
     monkeypatch.setattr(finalize_evidence, "run_secret_scan", lambda: {"tracked_files_scanned": 1, "tracked_findings_count": 0, "findings": [], "passed": True, "sanitized": True})
-    assert finalize_evidence.main(["--batch-id", "batch", "--dry-run"]) == 0
+    monkeypatch.setattr(finalize_evidence, "validate_finalizer_provenance", clean_provenance)
+    assert finalize_evidence.main(["--batch-id", VALID_BATCH_ID, "--dry-run"]) == 0
     assert not evidence.exists()
 
 
 def test_successful_finalization_writes_six_files(monkeypatch, tmp_path: Path) -> None:
     evidence = tmp_path / "evidence"
-    write_complete_runtime(tmp_path, "batch")
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
     monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
     monkeypatch.setattr(finalize_evidence, "EVIDENCE_ROOT", evidence)
     monkeypatch.setattr(finalize_evidence, "run_verification_commands", complete_results)
     monkeypatch.setattr(finalize_evidence, "run_secret_scan", lambda: {"tracked_files_scanned": 1, "tracked_findings_count": 0, "findings": [], "passed": True, "sanitized": True})
-    assert finalize_evidence.main(["--batch-id", "batch"]) == 0
+    monkeypatch.setattr(finalize_evidence, "validate_finalizer_provenance", clean_provenance)
+    assert finalize_evidence.main(["--batch-id", VALID_BATCH_ID]) == 0
     files = {path.name for path in evidence.iterdir()}
     assert files == {
         "gate3b_scenario_catalog.json",
@@ -295,7 +332,7 @@ def test_successful_finalization_writes_six_files(monkeypatch, tmp_path: Path) -
 def assert_rejected(summary: dict[str, object]) -> None:
     try:
         finalize_evidence.validate_completion_contract(summary)
-    except finalize_evidence.FinalizerContractError:
+    except (finalize_evidence.FinalizerContractError, finalize_evidence.FinalizerUsageError):
         return
     raise AssertionError("summary should have been rejected")
 
@@ -314,7 +351,7 @@ def assert_runtime_rejected(tmp_path: Path, summary: dict[str, object]) -> None:
 
 
 def first_trace_file(tmp_path: Path, scenario_name: str) -> Path:
-    return next((tmp_path / "batch" / "retrieved_traces" / scenario_name).glob("*.normalized.json"))
+    return next((tmp_path / VALID_BATCH_ID / "retrieved_traces" / scenario_name).glob("*.normalized.json"))
 
 
 def mutate_json(path: Path, mutator) -> None:
@@ -323,64 +360,273 @@ def mutate_json(path: Path, mutator) -> None:
     write_json(path, payload)
 
 
+def runtime_path(tmp_path: Path, *parts: str) -> Path:
+    return tmp_path / VALID_BATCH_ID / Path(*parts)
+
+
+def summary_path(tmp_path: Path) -> Path:
+    return runtime_path(tmp_path, "gate3b_summary.json")
+
+
+def update_summary_file(tmp_path: Path, mutator) -> dict[str, object]:
+    payload = json.loads(summary_path(tmp_path).read_text(encoding="utf-8"))
+    mutator(payload)
+    write_json(summary_path(tmp_path), payload)
+    return payload
+
+
+def manifest_path(tmp_path: Path, filename: str) -> Path:
+    return runtime_path(tmp_path, filename)
+
+
+def scenario_log_name() -> str:
+    return "pass_single_trace_correlated_logs"
+
+
+def warning_name() -> str:
+    return "pass_with_warnings_uncorrelated_logs"
+
+
+def supports_symlink(tmp_path: Path) -> bool:
+    target = tmp_path / "target"
+    link = tmp_path / "link"
+    target.write_text("x", encoding="utf-8")
+    try:
+        link.symlink_to(target)
+    except OSError:
+        return False
+    return link.is_symlink()
+
+
+def test_strict_batch_ids_and_summary_agreement(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    assert finalize_evidence.resolve_runtime_batch_dir(VALID_BATCH_ID) == (tmp_path / VALID_BATCH_ID).resolve()
+    bad_ids = [
+        ".",
+        "..",
+        "../batch",
+        "batch/../../other",
+        str((tmp_path / "absolute").resolve()),
+        "C:\\batch",
+        " 20260101T000000Z-abcdef123456",
+        "2026011T000000Z-abcdef123456",
+        "20260101T000000Z-abcdef12345",
+        "20260101T000000Z-abcdef1234567",
+        "20260101T000000Z-ABCDEF123456",
+    ]
+    for batch_id in bad_ids:
+        try:
+            finalize_evidence.resolve_runtime_batch_dir(batch_id)
+        except finalize_evidence.FinalizerUsageError:
+            pass
+        else:
+            raise AssertionError(f"batch ID should fail: {batch_id}")
+
+    other_id = "20260101T000001Z-abcdef123456"
+    summary = update_summary_file(tmp_path, lambda payload: payload.update({"batch_id": other_id}))
+    assert summary["batch_id"] == other_id
+    try:
+        finalize_evidence.load_summary(VALID_BATCH_ID)
+    except finalize_evidence.FinalizerUsageError:
+        pass
+    else:
+        raise AssertionError("summary batch mismatch should fail")
+
+
+def test_symlinked_runtime_artifacts_are_rejected(monkeypatch, tmp_path: Path) -> None:
+    if not supports_symlink(tmp_path):
+        import pytest
+
+        pytest.skip("host does not permit symlink creation")
+    monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}", encoding="utf-8")
+
+    cases = [
+        runtime_path(tmp_path, "gate3b_summary.json"),
+        runtime_path(tmp_path, "environment_check.json"),
+        runtime_path(tmp_path, "trace_emission_manifest.json"),
+        first_trace_file(tmp_path, scenario_log_name()),
+        runtime_path(tmp_path, "retrieved_logs", f"{scenario_log_name()}.normalized.json"),
+    ]
+    for path in cases:
+        write_complete_runtime(tmp_path, VALID_BATCH_ID)
+        path.unlink()
+        path.symlink_to(outside)
+        assert_runtime_rejected(tmp_path, summary)
+
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    shutil.rmtree(runtime_path(tmp_path, "evaluations"))
+    runtime_path(tmp_path, "evaluations").symlink_to(tmp_path, target_is_directory=True)
+    assert_runtime_rejected(tmp_path, summary)
+
+    shutil.rmtree(tmp_path / VALID_BATCH_ID)
+    target = tmp_path / "real-batch"
+    target.mkdir()
+    (tmp_path / VALID_BATCH_ID).symlink_to(target, target_is_directory=True)
+    try:
+        finalize_evidence.resolve_runtime_batch_dir(VALID_BATCH_ID)
+    except finalize_evidence.FinalizerUsageError:
+        pass
+    else:
+        raise AssertionError("symlinked batch directory should fail")
+
+
+def test_config_snapshot_and_service_binding_are_required(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
+    signoz_key = "SIGNOZ" + "_API_KEY"
+    cases = [
+        lambda payload: payload.pop("config"),
+        lambda payload: payload["config"].pop("TRACEGUARD_GATE3B_SERVICE_NAME"),
+        lambda payload: payload["config"].update({"TRACEGUARD_GATE3B_SERVICE_NAME": ""}),
+        lambda payload: payload["config"].update({signoz_key: "not-set"}),
+        lambda payload: payload["config"].update({"TRACEGUARD_OTLP_TRACES_ENDPOINT": "http://localhost:4318/v1/other"}),
+        lambda payload: payload["config"].update({"SIGNOZ_REQUEST_TIMEOUT_SECONDS": True}),
+        lambda payload: payload["config"].update({"TRACEGUARD_OTLP_TIMEOUT_SECONDS": 0}),
+        lambda payload: payload["config"].update({"TRACEGUARD_GATE3B_POLL_INTERVAL_SECONDS": 61.0}),
+    ]
+    for mutator in cases:
+        write_complete_runtime(tmp_path, VALID_BATCH_ID)
+        summary = update_summary_file(tmp_path, mutator)
+        assert_runtime_rejected(tmp_path, summary)
+
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    summary = update_summary_file(tmp_path, lambda payload: payload["config"].update({"TRACEGUARD_OTLP_LOGS_ENDPOINT": "http://localhost:4318/v1/traces"}))
+    assert_runtime_rejected(tmp_path, summary)
+
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    mutate_json(manifest_path(tmp_path, "trace_emission_manifest.json"), lambda payload: payload["scenarios"][scenario_log_name()].update({"service_name": "other"}))
+    assert_runtime_rejected(tmp_path, json.loads(summary_path(tmp_path).read_text(encoding="utf-8")))
+
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    mutate_json(manifest_path(tmp_path, "log_emission_manifest.json"), lambda payload: payload["scenarios"][scenario_log_name()].update({"service_name": "other"}))
+    assert_runtime_rejected(tmp_path, json.loads(summary_path(tmp_path).read_text(encoding="utf-8")))
+
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    mutate_json(manifest_path(tmp_path, "trace_emission_manifest.json"), lambda payload: payload["scenarios"][scenario_log_name()].update({"service_name": "trace-svc"}))
+    mutate_json(manifest_path(tmp_path, "log_emission_manifest.json"), lambda payload: payload["scenarios"][scenario_log_name()].update({"service_name": "log-svc"}))
+    assert_runtime_rejected(tmp_path, json.loads(summary_path(tmp_path).read_text(encoding="utf-8")))
+
+
+def test_retrieved_log_source_provenance_is_exact(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    summary = json.loads(summary_path(tmp_path).read_text(encoding="utf-8"))
+    assert finalize_evidence.validate_completion_contract(summary).scenario_validations[scenario_log_name()].retrieved_log_source == "SigNoz Logs API"
+    for source in (None, "", "MCP", "synthetic", "local", "unknown"):
+        write_complete_runtime(tmp_path, VALID_BATCH_ID)
+
+        def mutate(payload, source=source):
+            if source is None:
+                payload["logs"][0].pop("source")
+            else:
+                payload["logs"][0]["source"] = source
+
+        mutate_json(runtime_path(tmp_path, "retrieved_logs", f"{scenario_log_name()}.normalized.json"), mutate)
+        assert_runtime_rejected(tmp_path, json.loads(summary_path(tmp_path).read_text(encoding="utf-8")))
+
+
+def test_trace_emission_manifest_internal_consistency(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
+    name = scenario_log_name()
+
+    def reject(mutator) -> None:
+        write_complete_runtime(tmp_path, VALID_BATCH_ID)
+        mutate_json(manifest_path(tmp_path, "trace_emission_manifest.json"), lambda payload: mutator(payload["scenarios"][name]))
+        assert_runtime_rejected(tmp_path, json.loads(summary_path(tmp_path).read_text(encoding="utf-8")))
+
+    reject(lambda item: item["root_span_ids_by_trace_id"].update({"f" * 32: "1" * 16}))
+    reject(lambda item: item["root_span_ids_by_trace_id"].pop(item["emitted_trace_ids"][0]))
+    reject(lambda item: item["root_span_ids_by_trace_id"].update({item["emitted_trace_ids"][0]: "9" * 16}))
+    reject(lambda item: item["span_ids_by_trace_id_and_name"][item["emitted_trace_ids"][0]].update({"extra.span": "4" * 16}))
+    reject(lambda item: item["span_ids_by_trace_id_and_name"][item["emitted_trace_ids"][0]].pop("tool.call"))
+    reject(lambda item: item["span_ids_by_trace_id_and_name"][item["emitted_trace_ids"][0]].update({"tool.call": item["span_ids_by_trace_id_and_name"][item["emitted_trace_ids"][0]]["agent.run"]}))
+    reject(lambda item: item["emitted_trace_ids"].__setitem__(0, "not-hex"))
+    reject(lambda item: item["span_ids_by_trace_id_and_name"][item["emitted_trace_ids"][0]].update({"tool.call": "not-span"}))
+    reject(lambda item: item["parent_span_ids_by_trace_id_and_name"][item["emitted_trace_ids"][0]].update({"tool.call": None}))
+    reject(lambda item: item["expected_attributes_by_trace_id_and_name"][item["emitted_trace_ids"][0]]["agent.run"].pop(TRACE_BATCH_ATTR))
+
+
+def test_log_emission_manifest_internal_consistency(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
+    name = scenario_log_name()
+
+    def reject(scenario_name: str, mutator) -> None:
+        write_complete_runtime(tmp_path, VALID_BATCH_ID)
+        mutate_json(manifest_path(tmp_path, "log_emission_manifest.json"), lambda payload: mutator(payload["scenarios"][scenario_name]))
+        assert_runtime_rejected(tmp_path, json.loads(summary_path(tmp_path).read_text(encoding="utf-8")))
+
+    reject(name, lambda item: item["expected_trace_ids"].update({"extra-log": item["expected_trace_ids"][item["log_ids"][0]]}))
+    reject(name, lambda item: item["expected_trace_ids"].pop(item["log_ids"][0]))
+    reject(name, lambda item: item["expected_trace_ids"].update({item["log_ids"][0]: "f" * 32}))
+    reject(name, lambda item: item["expected_span_ids"].update({item["log_ids"][0]: "f" * 16}))
+    reject(warning_name(), lambda item: item["expected_agent_run_ids"].update({log_id: "run-no-mismatch" for log_id in item["log_ids"]}))
+    reject(name, lambda item: item["expected_agent_run_ids"].update({item["log_ids"][0]: "unexpected-mismatch"}))
+
+    zero_name = "pass_single_trace_without_logs"
+    reject(zero_name, lambda item: item["expected_trace_ids"].update({"extra": "f" * 32}))
+
+
 def test_raw_artifacts_are_authoritative_over_runner_summary_flags(tmp_path: Path) -> None:
-    summary = write_complete_runtime(tmp_path, "batch")
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
     name = "pass_single_trace_correlated_logs"
 
     mutate_json(first_trace_file(tmp_path, name), lambda payload: payload["spans"][1].update({"parent_span_id": "9" * 16}))
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
     mutate_json(first_trace_file(tmp_path, name), lambda payload: payload["spans"][1]["attributes"].update({"tool.status": "changed"}))
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
     mutate_json(first_trace_file(tmp_path, name), lambda payload: payload["spans"][0].update({"service_name": "other"}))
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
-    mutate_json(tmp_path / "batch" / "retrieved_logs" / f"{name}.normalized.json", lambda payload: payload["logs"][0].update({"body": "changed"}))
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    mutate_json(tmp_path / VALID_BATCH_ID / "retrieved_logs" / f"{name}.normalized.json", lambda payload: payload["logs"][0].update({"body": "changed"}))
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
-    mutate_json(tmp_path / "batch" / "retrieved_logs" / f"{name}.normalized.json", lambda payload: payload["logs"][0].update({"timestamp": "not-a-date"}))
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    mutate_json(tmp_path / VALID_BATCH_ID / "retrieved_logs" / f"{name}.normalized.json", lambda payload: payload["logs"][0].update({"timestamp": "not-a-date"}))
     assert_runtime_rejected(tmp_path, summary)
 
 
 def test_runtime_artifact_contradictions_are_rejected(tmp_path: Path) -> None:
-    summary = write_complete_runtime(tmp_path, "batch")
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
     name = "pass_single_trace_correlated_logs"
-    mutate_json(tmp_path / "batch" / "evaluations" / f"{name}.json", lambda payload: payload.update({"verdict": "BLOCK"}))
+    mutate_json(tmp_path / VALID_BATCH_ID / "evaluations" / f"{name}.json", lambda payload: payload.update({"verdict": "BLOCK"}))
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
-    mutate_json(tmp_path / "batch" / "run_bundles" / f"{name}.json", lambda payload: payload["traces"][0]["trace"].update({"trace_id": "f" * 32}))
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    mutate_json(tmp_path / VALID_BATCH_ID / "run_bundles" / f"{name}.json", lambda payload: payload["traces"][0]["trace"].update({"trace_id": "f" * 32}))
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
     first_trace_file(tmp_path, name).unlink()
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
-    (tmp_path / "batch" / "retrieved_logs" / "unexpected.normalized.json").write_text("{}", encoding="utf-8")
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    (tmp_path / VALID_BATCH_ID / "retrieved_logs" / "unexpected.normalized.json").write_text("{}", encoding="utf-8")
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
     first_trace_file(tmp_path, name).write_text("{", encoding="utf-8")
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
-    (tmp_path / "batch" / "retrieved_logs" / f"{name}.normalized.json").write_text("{", encoding="utf-8")
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    (tmp_path / VALID_BATCH_ID / "retrieved_logs" / f"{name}.normalized.json").write_text("{", encoding="utf-8")
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
     trace_path = first_trace_file(tmp_path, name)
     duplicate = trace_path.with_name("f" * 32 + ".normalized.json")
     duplicate.write_text(trace_path.read_text(encoding="utf-8"), encoding="utf-8")
     assert_runtime_rejected(tmp_path, summary)
 
-    summary = write_complete_runtime(tmp_path, "batch")
-    mutate_json(tmp_path / "batch" / "retrieved_logs" / f"{name}.normalized.json", lambda payload: payload["logs"].append(dict(payload["logs"][0])))
+    summary = write_complete_runtime(tmp_path, VALID_BATCH_ID)
+    mutate_json(tmp_path / VALID_BATCH_ID / "retrieved_logs" / f"{name}.normalized.json", lambda payload: payload["logs"].append(dict(payload["logs"][0])))
     assert_runtime_rejected(tmp_path, summary)
 
 
@@ -476,9 +722,10 @@ def test_finalizer_recomputes_status_verdict_counts_ids_and_preservation() -> No
 
 def test_exact_verification_command_set_is_required(monkeypatch, tmp_path: Path) -> None:
     evidence = tmp_path / "evidence"
-    write_complete_runtime(tmp_path, "batch")
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
     monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
     monkeypatch.setattr(finalize_evidence, "EVIDENCE_ROOT", evidence)
+    monkeypatch.setattr(finalize_evidence, "validate_finalizer_provenance", clean_provenance)
     monkeypatch.setattr(finalize_evidence, "run_secret_scan", lambda: {"tracked_files_scanned": 1, "tracked_findings_count": 0, "findings": [], "passed": True, "sanitized": True})
 
     bad_sets = [
@@ -497,7 +744,7 @@ def test_exact_verification_command_set_is_required(monkeypatch, tmp_path: Path)
     ]
     for bad in bad_sets:
         monkeypatch.setattr(finalize_evidence, "run_verification_commands", lambda bad=bad: bad)
-        assert finalize_evidence.main(["--batch-id", "batch"]) == 3
+        assert finalize_evidence.main(["--batch-id", VALID_BATCH_ID]) == 3
         assert not evidence.exists()
 
 
@@ -533,9 +780,148 @@ def test_secret_scanner_detects_regex_like_secret_values_without_leaking_values(
         assert value not in json.dumps(findings)
 
 
+def test_secret_scanner_detects_json_and_colon_credential_forms() -> None:
+    signoz_key = "SIGNOZ" + "_API_KEY"
+    signoz_header = "SIGNOZ" + "-API-KEY"
+    signoz_lower = "signoz" + "_api_key"
+    auth = "Authori" + "zation"
+    cookie = "Cook" + "ie"
+    password = "pass" + "word"
+    forms = {
+        "env": signoz_key + "=" + "live-value",
+        "yaml": signoz_key + ": " + "live-value",
+        "json_api": '"' + signoz_key + '": "' + "live-value" + '"',
+        "json_header": '"' + signoz_header + '": "' + "live-value" + '"',
+        "json_lower": '"' + signoz_lower + '": "' + "live-value" + '"',
+        "auth_header": auth + ": Bearer " + "live-value",
+        "json_auth": '"' + auth + '": "Bearer ' + "live-value" + '"',
+        "json_auth_lower": '"' + auth.lower() + '": "' + "live-value" + '"',
+        "cookie": cookie + ": session=" + "live-value",
+        "json_cookie": '"' + cookie + '": "session=' + "live-value" + '"',
+        "password_assignment": password + '="' + "live-value" + '"',
+        "password_colon": password + ': "' + "live-value" + '"',
+        "json_password": '"' + password + '": "' + "live-value" + '"',
+    }
+    for label, text in forms.items():
+        findings = finalize_evidence.scan_text_payload_for_secrets(f"{label}.txt", text)
+        assert len(findings) == 1
+        assert "live-value" not in json.dumps(findings)
+
+
+def test_secret_scanner_safe_placeholders_across_supported_syntaxes() -> None:
+    signoz_key = "SIGNOZ" + "_API_KEY"
+    signoz_header = "SIGNOZ" + "-API-KEY"
+    signoz_lower = "signoz" + "_api_key"
+    auth = "Authori" + "zation"
+    cookie = "Cook" + "ie"
+    password = "pass" + "word"
+    clean = "\n".join(
+        [
+            signoz_key + "=<redacted>",
+            signoz_key + ": <set>",
+            '"' + signoz_key + '": "example-key"',
+            '"' + signoz_header + '": "fake-key"',
+            '"' + signoz_lower + '": "test-api-key"',
+            auth + ": Bearer fake-token",
+            '"' + auth + '": "Bearer synthetic-token"',
+            cookie + ": <redacted>",
+            '"' + cookie + '": "<redacted>"',
+            password + '="changeme-for-local-testing"',
+            '"' + password + '": "changeme-for-local-testing"',
+        ]
+    )
+    assert finalize_evidence.scan_text_payload_for_secrets("placeholders.txt", clean) == []
+
+
+def test_secret_scanner_keywords_do_not_create_exemptions_and_cookie_is_line_bounded() -> None:
+    signoz_key = "SIGNOZ" + "_API_KEY"
+    cookie = "Cook" + "ie"
+    text = "\n".join(
+        [
+            signoz_key + "=" + "example-but-real",
+            signoz_key + "=" + "fake-but-real",
+            signoz_key + "=" + "secret-but-real",
+            cookie + ": session=" + "cookie-real",
+            "ordinary text",
+        ]
+    )
+    findings = finalize_evidence.scan_text_payload_for_secrets("keywords.txt", text)
+    assert [item["line"] for item in findings] == [1, 2, 3, 4]
+    assert all("real" not in json.dumps(item) for item in findings)
+
+
 def test_scanner_source_declarations_do_not_create_false_positive() -> None:
     line = '("signoz_api_key", re.compile(r"\\bSIGNOZ_API_KEY\\s*=\\s*[\'\\"]?([^\'\\"\\s#]+)")),'
     assert finalize_evidence.scan_text_payload_for_secrets("gate3b/finalize_evidence.py", line) == []
+
+
+def test_git_provenance_validation(monkeypatch, tmp_path: Path) -> None:
+    calls: list[tuple[list[str], bool]] = []
+
+    def fake_run(command, **kwargs):
+        calls.append((list(command), kwargs.get("shell")))
+        if command[-1] == "--show-toplevel":
+            return subprocess.CompletedProcess(command, 0, stdout=str(finalize_evidence.REPO_ROOT) + "\n", stderr="")
+        if command[-1] == "HEAD":
+            return subprocess.CompletedProcess(command, 0, stdout=SOURCE_SHA + "\n", stderr="")
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(finalize_evidence.subprocess, "run", fake_run)
+    provenance = finalize_evidence.current_git_provenance()
+    assert provenance.source_commit_sha == SOURCE_SHA
+    assert provenance.source_worktree_clean is True
+    assert all(command[0] == "git" and shell is False for command, shell in calls)
+
+
+def test_git_provenance_rejects_bad_states(monkeypatch) -> None:
+    def install(stdout_by_suffix: dict[str, tuple[int, str]]) -> None:
+        def fake_run(command, **kwargs):
+            suffix = command[-1]
+            code, stdout = stdout_by_suffix.get(suffix, (0, ""))
+            return subprocess.CompletedProcess(command, code, stdout=stdout, stderr="")
+
+        monkeypatch.setattr(finalize_evidence.subprocess, "run", fake_run)
+
+    install({"--show-toplevel": (0, str(finalize_evidence.REPO_ROOT.parent) + "\n"), "HEAD": (0, SOURCE_SHA + "\n"), "--porcelain": (0, "")})
+    try:
+        finalize_evidence.current_git_provenance()
+    except finalize_evidence.FinalizerContractError:
+        pass
+    else:
+        raise AssertionError("wrong repository root should fail")
+
+    install({"--show-toplevel": (0, str(finalize_evidence.REPO_ROOT) + "\n"), "HEAD": (0, "bad\n"), "--porcelain": (0, "")})
+    try:
+        finalize_evidence.current_git_provenance()
+    except finalize_evidence.FinalizerContractError:
+        pass
+    else:
+        raise AssertionError("malformed HEAD should fail")
+
+    install({"--show-toplevel": (0, str(finalize_evidence.REPO_ROOT) + "\n"), "HEAD": (0, SOURCE_SHA + "\n"), "--porcelain": (0, " M file\n")})
+    summary = {"source_commit_sha": SOURCE_SHA, "source_worktree_clean": True}
+    try:
+        finalize_evidence.validate_finalizer_provenance(summary)
+    except finalize_evidence.FinalizerContractError:
+        pass
+    else:
+        raise AssertionError("dirty worktree should fail")
+
+    install({"--show-toplevel": (0, str(finalize_evidence.REPO_ROOT) + "\n"), "HEAD": (0, SOURCE_SHA + "\n"), "--porcelain": (0, "")})
+    try:
+        finalize_evidence.validate_finalizer_provenance({"source_commit_sha": "2" * 40, "source_worktree_clean": True})
+    except finalize_evidence.FinalizerContractError:
+        pass
+    else:
+        raise AssertionError("runtime/finalizer SHA mismatch should fail")
+
+    install({"--show-toplevel": (1, ""), "HEAD": (0, SOURCE_SHA + "\n"), "--porcelain": (0, "")})
+    try:
+        finalize_evidence.current_git_provenance()
+    except finalize_evidence.FinalizerContractError:
+        pass
+    else:
+        raise AssertionError("git command failure should fail")
 
 
 def test_serialized_evidence_bytes_are_the_bytes_written(monkeypatch, tmp_path: Path) -> None:
@@ -578,11 +964,86 @@ def test_prepare_failure_leaves_previous_evidence_intact(monkeypatch, tmp_path: 
         assert (evidence_dir / name).read_text(encoding="utf-8") == text
 
 
+def assert_no_publication_scratch(evidence_dir: Path) -> None:
+    assert not list(evidence_dir.glob(".tmp-*"))
+    assert not list(evidence_dir.glob(".bak-*"))
+
+
+def test_backup_failure_rolls_back_existing_files(monkeypatch, tmp_path: Path) -> None:
+    evidence_dir = tmp_path / "evidence"
+    evidence_dir.mkdir()
+    previous = {f"file-{index}.json": "previous\n" for index in range(6)}
+    for name, text in previous.items():
+        (evidence_dir / name).write_text(text, encoding="utf-8")
+    monkeypatch.setattr(finalize_evidence, "EVIDENCE_ROOT", evidence_dir)
+    serialized = finalize_evidence.serialize_evidence({name: {"new": name, "sanitized": True} for name in previous})
+    original_replace = Path.replace
+    calls = {"count": 0}
+
+    def fail_first_backup(self: Path, target: Path):
+        if self.name in previous and target.name.startswith(".bak-"):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise OSError("backup failed")
+        return original_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", fail_first_backup)
+    try:
+        finalize_evidence.write_serialized_evidence(serialized)
+    except OSError:
+        pass
+    else:
+        raise AssertionError("expected backup failure")
+    for name, text in previous.items():
+        assert (evidence_dir / name).read_text(encoding="utf-8") == text
+    assert_no_publication_scratch(evidence_dir)
+
+
+def test_replacement_failures_restore_existing_and_remove_new_targets(monkeypatch, tmp_path: Path) -> None:
+    evidence_dir = tmp_path / "evidence"
+    evidence_dir.mkdir()
+    previous = {f"file-{index}.json": "previous\n" for index in range(3)}
+    payloads = {f"file-{index}.json": {"index": index, "sanitized": True} for index in range(6)}
+    for name, text in previous.items():
+        (evidence_dir / name).write_text(text, encoding="utf-8")
+    monkeypatch.setattr(finalize_evidence, "EVIDENCE_ROOT", evidence_dir)
+    serialized = finalize_evidence.serialize_evidence(payloads)
+    original_replace = Path.replace
+
+    for fail_on in (1, 4):
+        for path in evidence_dir.iterdir():
+            path.unlink()
+        for name, text in previous.items():
+            (evidence_dir / name).write_text(text, encoding="utf-8")
+        calls = {"count": 0}
+
+        def fail_replacement(self: Path, target: Path, *, fail_on=fail_on):
+            if self.name.startswith(".tmp-"):
+                calls["count"] += 1
+                if calls["count"] == fail_on:
+                    raise OSError("replace failed")
+            return original_replace(self, target)
+
+        monkeypatch.setattr(Path, "replace", fail_replacement)
+        try:
+            finalize_evidence.write_serialized_evidence(serialized)
+        except OSError:
+            pass
+        else:
+            raise AssertionError("expected replacement failure")
+        for name, text in previous.items():
+            assert (evidence_dir / name).read_text(encoding="utf-8") == text
+        for index in range(3, 6):
+            assert not (evidence_dir / f"file-{index}.json").exists()
+        assert_no_publication_scratch(evidence_dir)
+
+
 def test_proposed_evidence_scan_blocks_publication(monkeypatch, tmp_path: Path) -> None:
     evidence_dir = tmp_path / "evidence"
-    write_complete_runtime(tmp_path, "batch")
+    write_complete_runtime(tmp_path, VALID_BATCH_ID)
     monkeypatch.setattr(finalize_evidence, "RUNTIME_ROOT", tmp_path)
     monkeypatch.setattr(finalize_evidence, "EVIDENCE_ROOT", evidence_dir)
+    monkeypatch.setattr(finalize_evidence, "validate_finalizer_provenance", clean_provenance)
     monkeypatch.setattr(finalize_evidence, "run_verification_commands", complete_results)
     monkeypatch.setattr(finalize_evidence, "run_secret_scan", lambda: {"tracked_files_scanned": 1, "tracked_findings_count": 0, "findings": [], "passed": True, "sanitized": True})
     original = finalize_evidence.build_evidence
@@ -593,5 +1054,5 @@ def test_proposed_evidence_scan_blocks_publication(monkeypatch, tmp_path: Path) 
         return payload
 
     monkeypatch.setattr(finalize_evidence, "build_evidence", poisoned)
-    assert finalize_evidence.main(["--batch-id", "batch"]) == 3
+    assert finalize_evidence.main(["--batch-id", VALID_BATCH_ID]) == 3
     assert not evidence_dir.exists()

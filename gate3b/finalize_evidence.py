@@ -31,6 +31,11 @@ from gate3b.verification import verify_preservation
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = REPO_ROOT / ".traceguard" / "runtime" / "gate3b"
 EVIDENCE_ROOT = REPO_ROOT / "gate3b" / "evidence"
+BATCH_ID_RE = re.compile(r"^\d{8}T\d{6}Z-[0-9a-f]{12}$")
+TRACE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+SPAN_ID_RE = re.compile(r"^[0-9a-f]{16}$")
+CANONICAL_SPAN_NAMES = {"agent.run", "tool.call", "model.call"}
+CANONICAL_LOG_SOURCE = "SigNoz Logs API"
 EXPECTED_SCENARIOS = {item.name for item in SCENARIO_DEFINITIONS}
 SCENARIO_BY_NAME = {item.name: item for item in SCENARIO_DEFINITIONS}
 EXPECTED_RULE_IDS = set(RULE_BY_ID)
@@ -91,6 +96,7 @@ class ScenarioRuntimeValidation:
     retrieved_trace_ids: tuple[str, ...]
     emitted_log_ids: tuple[str, ...]
     retrieved_log_ids: tuple[str, ...]
+    retrieved_log_source: str
     trace_count: int
     log_count: int
     actual_rule_statuses: dict[str, str]
@@ -104,6 +110,7 @@ class ScenarioRuntimeValidation:
 @dataclass(frozen=True)
 class RuntimeBatchValidation:
     environment_check: dict[str, Any]
+    config_snapshot: dict[str, Any]
     scenario_validations: dict[str, ScenarioRuntimeValidation]
     recomputed_completed_count: int
     recomputed_matched_count: int
@@ -113,6 +120,7 @@ class RuntimeBatchValidation:
     def to_summary_dict(self) -> dict[str, Any]:
         return {
             "environment_check": self.environment_check,
+            "config_snapshot": self.config_snapshot,
             "scenario_validations": {
                 name: {
                     "scenario_id": item.scenario_id,
@@ -122,6 +130,7 @@ class RuntimeBatchValidation:
                     "retrieved_trace_ids": list(item.retrieved_trace_ids),
                     "emitted_log_ids": list(item.emitted_log_ids),
                     "retrieved_log_ids": list(item.retrieved_log_ids),
+                    "retrieved_log_source": item.retrieved_log_source,
                     "trace_count": item.trace_count,
                     "log_count": item.log_count,
                     "actual_rule_statuses": item.actual_rule_statuses,
@@ -146,6 +155,20 @@ class SerializedEvidenceSet:
     serialized_text: dict[str, str]
     filenames: tuple[str, ...]
     scan_result: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class GitProvenance:
+    source_commit_sha: str
+    source_worktree_clean: bool
+    repository_root_verified: bool
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "source_commit_sha": self.source_commit_sha,
+            "source_worktree_clean": self.source_worktree_clean,
+            "repository_root_verified": self.repository_root_verified,
+        }
 
 
 @dataclass(frozen=True)
@@ -200,6 +223,7 @@ def main(argv: list[str] | None = None) -> int:
         args = build_parser().parse_args(argv)
         summary = load_summary(args.batch_id)
         runtime_validation = validate_completion_contract(summary)
+        provenance = validate_finalizer_provenance(summary)
         command_results = run_verification_commands()
         try:
             validate_verification_results(command_results)
@@ -237,7 +261,7 @@ def main(argv: list[str] | None = None) -> int:
                 "sanitized": True,
             },
         )
-        evidence = build_evidence(summary, runtime_validation, command_results, expected_secret_scan, completion)
+        evidence = build_evidence(summary, runtime_validation, command_results, expected_secret_scan, completion, provenance)
         if contains_placeholder(evidence):
             print(json.dumps({"error": "placeholder_evidence_detected", "sanitized": True}, indent=2, sort_keys=True))
             return 4
@@ -250,6 +274,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.dry_run:
             print(json.dumps({"dry_run": True, "would_write": sorted(serialized.filenames), "evidence": evidence, "sanitized": True}, indent=2, sort_keys=True, default=str))
             return 0
+        if not provenance.source_worktree_clean:
+            raise FinalizerContractError("working tree must be clean before evidence publication")
         write_serialized_evidence(serialized)
         print(json.dumps({"finalized": True, "batch_id": args.batch_id, "files": sorted(serialized.filenames), "sanitized": True}, indent=2, sort_keys=True))
         return 0
@@ -272,19 +298,41 @@ class FinalizerContractError(Exception):
     pass
 
 
-def load_summary(batch_id: str) -> dict[str, Any]:
-    if not re.fullmatch(r"[A-Za-z0-9_.:-]+", batch_id):
-        raise FinalizerUsageError("batch ID contains unsupported characters")
-    path = RUNTIME_ROOT / batch_id / "gate3b_summary.json"
-    if not path.exists():
-        raise FinalizerUsageError(f"runtime summary not found for batch {batch_id}")
+def load_summary(requested_batch_id: str) -> dict[str, Any]:
+    runtime_dir = resolve_runtime_batch_dir(requested_batch_id)
+    path = runtime_dir / "gate3b_summary.json"
+    require_regular_artifact(path, "runtime summary", runtime_dir)
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise FinalizerUsageError("runtime summary is not valid JSON") from exc
     if not isinstance(payload, dict):
         raise FinalizerUsageError("runtime summary must be a JSON object")
+    if payload.get("batch_id") != requested_batch_id:
+        raise FinalizerUsageError("runtime summary batch_id must match requested batch ID")
     return payload
+
+
+def validate_batch_id(batch_id: object) -> str:
+    if not isinstance(batch_id, str) or not BATCH_ID_RE.fullmatch(batch_id):
+        raise FinalizerUsageError("batch ID must match YYYYMMDDTHHMMSSZ-<12 lowercase hex characters>")
+    return batch_id
+
+
+def resolve_runtime_batch_dir(batch_id: str) -> Path:
+    valid_batch_id = validate_batch_id(batch_id)
+    root = RUNTIME_ROOT.resolve()
+    if RUNTIME_ROOT.is_symlink():
+        raise FinalizerUsageError("runtime root must not be a symlink")
+    candidate = RUNTIME_ROOT / valid_batch_id
+    if candidate.is_symlink():
+        raise FinalizerUsageError("runtime batch directory must not be a symlink")
+    resolved = candidate.resolve()
+    if resolved.parent != root:
+        raise FinalizerUsageError("runtime batch directory must be a direct child of runtime root")
+    if not resolved.exists() or not resolved.is_dir():
+        raise FinalizerUsageError(f"runtime batch directory not found for batch {valid_batch_id}")
+    return resolved
 
 
 def validate_completion_contract(summary: dict[str, Any]) -> RuntimeBatchValidation:
@@ -293,8 +341,8 @@ def validate_completion_contract(summary: dict[str, Any]) -> RuntimeBatchValidat
     scenarios = summary.get("scenarios")
     if not isinstance(scenarios, dict) or set(scenarios) != EXPECTED_SCENARIOS:
         raise FinalizerContractError("summary must contain the four exact Gate 3B scenarios")
-    batch_id = require_non_empty_string("summary.batch_id", summary.get("batch_id"))
-    runtime_dir = RUNTIME_ROOT / batch_id
+    batch_id = validate_batch_id(summary.get("batch_id"))
+    runtime_dir = resolve_runtime_batch_dir(batch_id)
     validate_expected_artifact_layout(runtime_dir)
     stored_summary = load_json_artifact(runtime_dir / "gate3b_summary.json", "runtime summary")
     if stored_summary != summary:
@@ -305,6 +353,8 @@ def validate_completion_contract(summary: dict[str, Any]) -> RuntimeBatchValidat
     if env != summary.get("environment_check"):
         raise FinalizerContractError("environment_check artifact disagrees with summary")
     validate_environment(env)
+    config_snapshot = validate_config_snapshot(summary.get("config"), env)
+    configured_service_name = str(config_snapshot["TRACEGUARD_GATE3B_SERVICE_NAME"])
     catalogue = load_json_artifact(runtime_dir / "scenario_catalog.json", "scenario_catalog")
     if catalogue != scenario_catalogue():
         raise FinalizerContractError("scenario_catalog artifact differs from immutable Gate 3B catalogue")
@@ -321,6 +371,7 @@ def validate_completion_contract(summary: dict[str, Any]) -> RuntimeBatchValidat
             scenario,
             trace_manifest,
             log_manifest,
+            configured_service_name,
         )
         compare_scenario_summary(name, scenario, scenario_validations[name])
     recomputed_completed_count = len(scenario_validations)
@@ -341,6 +392,7 @@ def validate_completion_contract(summary: dict[str, Any]) -> RuntimeBatchValidat
         raise FinalizerContractError("Gate 3B ruleset version mismatch")
     return RuntimeBatchValidation(
         environment_check=env,
+        config_snapshot=config_snapshot,
         scenario_validations=scenario_validations,
         recomputed_completed_count=recomputed_completed_count,
         recomputed_matched_count=recomputed_matched_count,
@@ -349,7 +401,41 @@ def validate_completion_contract(summary: dict[str, Any]) -> RuntimeBatchValidat
     )
 
 
+def validate_finalizer_provenance(summary: dict[str, Any]) -> GitProvenance:
+    provenance = current_git_provenance()
+    if summary.get("source_commit_sha") != provenance.source_commit_sha:
+        raise FinalizerContractError("runtime source_commit_sha must match finalizer HEAD")
+    if summary.get("source_worktree_clean") is not True:
+        raise FinalizerContractError("runtime source_worktree_clean must be true")
+    if not provenance.source_worktree_clean:
+        raise FinalizerContractError("finalizer working tree must be clean before publication")
+    return provenance
+
+
+def current_git_provenance() -> GitProvenance:
+    root = run_git_text(["rev-parse", "--show-toplevel"], "git repository root")
+    resolved_root = Path(root).resolve()
+    if resolved_root != REPO_ROOT.resolve():
+        raise FinalizerContractError("git repository root does not match finalizer REPO_ROOT")
+    head = run_git_text(["rev-parse", "HEAD"], "git HEAD")
+    if not re.fullmatch(r"[0-9a-f]{40}", head):
+        raise FinalizerContractError("git HEAD must be a 40-character lowercase hexadecimal SHA")
+    status = run_git_text(["status", "--porcelain"], "git status", allow_output=True)
+    return GitProvenance(head, status == "", True)
+
+
+def run_git_text(args: list[str], label: str, *, allow_output: bool = False) -> str:
+    completed = subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, shell=False, timeout=30)
+    if completed.returncode != 0:
+        raise FinalizerContractError(f"{label} command failed")
+    text = completed.stdout.strip()
+    if not allow_output and not text:
+        raise FinalizerContractError(f"{label} command returned empty output")
+    return text
+
+
 def validate_expected_artifact_layout(runtime_dir: Path) -> None:
+    require_directory_artifact(runtime_dir, "runtime batch directory", runtime_dir)
     expected_files = {
         runtime_dir / "gate3b_summary.json",
         runtime_dir / "environment_check.json",
@@ -358,35 +444,78 @@ def validate_expected_artifact_layout(runtime_dir: Path) -> None:
         runtime_dir / "scenario_catalog.json",
     }
     for path in expected_files:
-        if not path.exists():
-            raise FinalizerContractError(f"required runtime artifact missing: {path.name}")
+        require_regular_artifact(path, f"required runtime artifact {path.name}", runtime_dir)
     expected_scenario_files = {f"{name}.json" for name in EXPECTED_SCENARIOS}
     for subdir in ("run_bundles", "evaluations", "verification"):
         directory = runtime_dir / subdir
-        if not directory.is_dir():
-            raise FinalizerContractError(f"required runtime artifact directory missing: {subdir}")
+        require_directory_artifact(directory, f"required runtime artifact directory {subdir}", runtime_dir)
         actual = {path.name for path in directory.glob("*.json")}
         if actual != expected_scenario_files:
             raise FinalizerContractError(f"{subdir} must contain exactly the four scenario JSON artifacts")
+        for path in directory.glob("*.json"):
+            require_regular_artifact(path, f"{subdir} scenario artifact", runtime_dir)
     logs_dir = runtime_dir / "retrieved_logs"
-    if not logs_dir.is_dir():
-        raise FinalizerContractError("required retrieved_logs directory missing")
+    require_directory_artifact(logs_dir, "required retrieved_logs directory", runtime_dir)
     if {path.name for path in logs_dir.glob("*.normalized.json")} != {f"{name}.normalized.json" for name in EXPECTED_SCENARIOS}:
         raise FinalizerContractError("retrieved_logs must contain exactly the four scenario normalized artifacts")
+    for path in logs_dir.glob("*.normalized.json"):
+        require_regular_artifact(path, "retrieved log artifact", runtime_dir)
     traces_dir = runtime_dir / "retrieved_traces"
-    if not traces_dir.is_dir():
-        raise FinalizerContractError("required retrieved_traces directory missing")
+    require_directory_artifact(traces_dir, "required retrieved_traces directory", runtime_dir)
     if {path.name for path in traces_dir.iterdir() if path.is_dir()} != EXPECTED_SCENARIOS:
         raise FinalizerContractError("retrieved_traces must contain exactly the four scenario directories")
+    for scenario_name in EXPECTED_SCENARIOS:
+        scenario_dir = traces_dir / scenario_name
+        require_directory_artifact(scenario_dir, f"{scenario_name} retrieved trace directory", runtime_dir)
+        for path in scenario_dir.glob("*.normalized.json"):
+            require_regular_artifact(path, f"{scenario_name} retrieved trace artifact", runtime_dir)
+
+
+def require_regular_artifact(path: Path, label: str, batch_dir: Path) -> None:
+    if not path.exists():
+        raise FinalizerContractError(f"{label} is missing")
+    if path.is_symlink():
+        raise FinalizerContractError(f"{label} must not be a symlink")
+    if not path.is_file():
+        raise FinalizerContractError(f"{label} must be a regular file")
+    resolved = path.resolve()
+    resolved_batch = batch_dir.resolve()
+    if resolved != resolved_batch and resolved_batch not in resolved.parents:
+        raise FinalizerContractError(f"{label} resolved outside selected runtime batch")
+
+
+def require_directory_artifact(path: Path, label: str, batch_dir: Path) -> None:
+    if not path.exists():
+        raise FinalizerContractError(f"{label} is missing")
+    if path.is_symlink():
+        raise FinalizerContractError(f"{label} must not be a symlink")
+    if not path.is_dir():
+        raise FinalizerContractError(f"{label} must be a directory")
+    resolved = path.resolve()
+    resolved_batch = batch_dir.resolve()
+    if resolved != resolved_batch and resolved_batch not in resolved.parents:
+        raise FinalizerContractError(f"{label} resolved outside selected runtime batch")
 
 
 def load_json_artifact(path: Path, label: str) -> Any:
-    if not path.exists():
-        raise FinalizerContractError(f"{label} is missing")
+    batch_dir = containing_batch_dir(path)
+    require_regular_artifact(path, label, batch_dir)
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise FinalizerContractError(f"{label} is malformed JSON") from exc
+
+
+def containing_batch_dir(path: Path) -> Path:
+    resolved_root = RUNTIME_ROOT.resolve()
+    resolved_path = path.resolve()
+    try:
+        relative = resolved_path.relative_to(resolved_root)
+    except ValueError as exc:
+        raise FinalizerContractError("runtime artifact path is outside runtime root") from exc
+    if not relative.parts:
+        raise FinalizerContractError("runtime artifact path has no batch directory")
+    return resolved_root / relative.parts[0]
 
 
 def require_manifest(path: Path, batch_id: str, label: str) -> dict[str, Any]:
@@ -406,6 +535,7 @@ def recompute_scenario_validation(
     scenario_summary: dict[str, Any],
     trace_manifest: dict[str, Any],
     log_manifest: dict[str, Any],
+    configured_service_name: str,
 ) -> ScenarioRuntimeValidation:
     definition = SCENARIO_BY_NAME[name]
     scenario_id = require_non_empty_string(f"{name}.scenario_id", scenario_summary.get("scenario_id"))
@@ -414,6 +544,7 @@ def recompute_scenario_validation(
     scenario = RuntimeScenario(definition, batch_id, scenario_id, agent_run_id, summary_log_ids)
     trace_emission = parse_trace_emission(name, trace_manifest.get(name))
     log_emission = parse_log_emission(name, definition, log_manifest.get(name))
+    validate_emission_consistency(name, definition, scenario, trace_emission, log_emission, configured_service_name)
     if trace_emission.agent_run_id != agent_run_id:
         raise FinalizerContractError(f"{name} trace emission agent_run_id disagrees with summary")
     if tuple(log_emission.log_ids) != summary_log_ids:
@@ -467,6 +598,7 @@ def recompute_scenario_validation(
         retrieved_trace_ids=tuple(trace.trace_id for trace in retrieved_traces),
         emitted_log_ids=tuple(log_emission.log_ids),
         retrieved_log_ids=tuple(log.log_id for log in retrieved_logs),
+        retrieved_log_source=CANONICAL_LOG_SOURCE,
         trace_count=len(retrieved_traces),
         log_count=len(retrieved_logs),
         actual_rule_statuses=actual_statuses,
@@ -532,7 +664,7 @@ def compare_set_field(name: str, scenario: dict[str, Any], field: str, expected:
 def parse_trace_emission(name: str, payload: Any) -> TraceEmissionResult:
     if not isinstance(payload, dict):
         raise FinalizerContractError(f"{name} trace emission must be an object")
-    return TraceEmissionResult(
+    emission = TraceEmissionResult(
         require_matching_string(name, "trace emission scenario_name", payload.get("scenario_name")),
         require_non_empty_string(f"{name}.trace_emission.agent_run_id", payload.get("agent_run_id")),
         require_non_empty_string(f"{name}.trace_emission.service_name", payload.get("service_name")),
@@ -544,6 +676,8 @@ def parse_trace_emission(name: str, payload: Any) -> TraceEmissionResult:
         require_non_empty_string(f"{name}.trace_emission.exported_at", payload.get("exported_at")),
         require_bool_true(f"{name}.trace_emission.exported", payload.get("exported", True)),
     )
+    validate_trace_emission_shape(name, SCENARIO_BY_NAME[name], emission)
+    return emission
 
 
 def parse_log_emission(name: str, definition: Any, payload: Any) -> LogEmissionResult:
@@ -566,6 +700,101 @@ def parse_log_emission(name: str, definition: Any, payload: Any) -> LogEmissionR
         require_non_empty_string(f"{name}.log_emission.exported_at", payload.get("exported_at")),
         require_bool_true(f"{name}.log_emission.exported", payload.get("exported", True)),
     )
+
+
+def validate_emission_consistency(
+    name: str,
+    definition: Any,
+    scenario: RuntimeScenario,
+    trace_emission: TraceEmissionResult,
+    log_emission: LogEmissionResult,
+    configured_service_name: str,
+) -> None:
+    if trace_emission.service_name != configured_service_name:
+        raise FinalizerContractError(f"{name} trace emission service_name must match configured service name")
+    if log_emission.service_name != configured_service_name:
+        raise FinalizerContractError(f"{name} log emission service_name must match configured service name")
+    if trace_emission.service_name != log_emission.service_name:
+        raise FinalizerContractError(f"{name} trace/log emission service names must agree")
+    validate_trace_emission_shape(name, definition, trace_emission)
+    validate_log_emission_shape(name, definition, scenario, trace_emission, log_emission)
+
+
+def validate_trace_emission_shape(name: str, definition: Any, emission: TraceEmissionResult) -> None:
+    trace_ids = tuple(emission.emitted_trace_ids)
+    if len(trace_ids) != len(set(trace_ids)) or len(trace_ids) != definition.expected_trace_count:
+        raise FinalizerContractError(f"{name} trace emission IDs must be unique and match scenario trace count")
+    if any(not TRACE_ID_RE.fullmatch(trace_id) for trace_id in trace_ids):
+        raise FinalizerContractError(f"{name} trace emission contains malformed trace ID")
+    expected_trace_keys = set(trace_ids)
+    for field, mapping in (
+        ("root_span_ids_by_trace_id", emission.root_span_ids_by_trace_id),
+        ("span_ids_by_trace_id_and_name", emission.span_ids_by_trace_id_and_name),
+        ("parent_span_ids_by_trace_id_and_name", emission.parent_span_ids_by_trace_id_and_name),
+        ("expected_attributes_by_trace_id_and_name", emission.expected_attributes_by_trace_id_and_name),
+    ):
+        if set(mapping) != expected_trace_keys:
+            raise FinalizerContractError(f"{name} trace emission {field} keys must exactly match emitted trace IDs")
+    for trace_id in trace_ids:
+        span_map = emission.span_ids_by_trace_id_and_name[trace_id]
+        parent_map = emission.parent_span_ids_by_trace_id_and_name[trace_id]
+        attrs_map = emission.expected_attributes_by_trace_id_and_name[trace_id]
+        if set(span_map) != CANONICAL_SPAN_NAMES or set(parent_map) != CANONICAL_SPAN_NAMES or set(attrs_map) != CANONICAL_SPAN_NAMES:
+            raise FinalizerContractError(f"{name} trace emission span maps must use exact canonical span names")
+        span_ids = [span_map["agent.run"], span_map["tool.call"], span_map["model.call"]]
+        if len(span_ids) != len(set(span_ids)) or any(not SPAN_ID_RE.fullmatch(span_id) for span_id in span_ids):
+            raise FinalizerContractError(f"{name} trace emission span IDs must be unique lowercase 16-char hex values")
+        if emission.root_span_ids_by_trace_id[trace_id] != span_map["agent.run"]:
+            raise FinalizerContractError(f"{name} trace emission root span map contradicts agent.run span ID")
+        if parent_map["agent.run"] is not None or parent_map["tool.call"] != span_map["agent.run"] or parent_map["model.call"] != span_map["agent.run"]:
+            raise FinalizerContractError(f"{name} trace emission parent map is invalid")
+        for span_name, attrs in attrs_map.items():
+            for key in (TRACE_BATCH_ATTR, TRACE_SCENARIO_ATTR, TRACE_SCENARIO_NAME_ATTR):
+                if key not in attrs:
+                    raise FinalizerContractError(f"{name} trace emission expected attrs missing {key}")
+            if span_name == "agent.run" and attrs.get("agent.run_id") != emission.agent_run_id:
+                raise FinalizerContractError(f"{name} trace emission root attrs must preserve agent.run_id")
+
+
+def validate_log_emission_shape(
+    name: str,
+    definition: Any,
+    scenario: RuntimeScenario,
+    trace_emission: TraceEmissionResult,
+    emission: LogEmissionResult,
+) -> None:
+    log_ids = tuple(emission.log_ids)
+    if len(log_ids) != len(set(log_ids)) or len(log_ids) != definition.expected_log_count:
+        raise FinalizerContractError(f"{name} log emission IDs must be unique and match scenario log count")
+    expected_log_keys = set(log_ids)
+    for field, mapping in (
+        ("expected_agent_run_ids", emission.expected_agent_run_ids),
+        ("expected_trace_ids", emission.expected_trace_ids),
+        ("expected_span_ids", emission.expected_span_ids),
+    ):
+        if set(mapping) != expected_log_keys:
+            raise FinalizerContractError(f"{name} log emission {field} keys must exactly match log IDs")
+    if not log_ids:
+        if emission.expected_agent_run_ids or emission.expected_trace_ids or emission.expected_span_ids or emission.bodies:
+            raise FinalizerContractError(f"{name} zero-log emission maps must be empty")
+        return
+    span_ids_by_trace = trace_emission.span_ids_by_trace_id_and_name
+    mismatches = 0
+    for log_id in log_ids:
+        trace_id = emission.expected_trace_ids[log_id]
+        span_id = emission.expected_span_ids[log_id]
+        if trace_id not in span_ids_by_trace:
+            raise FinalizerContractError(f"{name} log emission references an unknown emitted trace")
+        if span_id not in set(span_ids_by_trace[trace_id].values()):
+            raise FinalizerContractError(f"{name} log emission references an unknown emitted span")
+        run_id = emission.expected_agent_run_ids[log_id]
+        if run_id != scenario.agent_run_id:
+            mismatches += 1
+    if name == "pass_with_warnings_uncorrelated_logs":
+        if mismatches != 1:
+            raise FinalizerContractError(f"{name} warning scenario must contain exactly one intentional agent.run_id mismatch")
+    elif mismatches != 0:
+        raise FinalizerContractError(f"{name} correlated scenario must not contain agent.run_id mismatches")
 
 
 def load_retrieved_traces(runtime_dir: Path, name: str, expected_trace_ids: tuple[str, ...]) -> tuple[Trace, ...]:
@@ -645,6 +874,9 @@ def load_retrieved_logs(runtime_dir: Path, name: str, expected_log_ids: tuple[st
 def parse_retrieved_log(name: str, index: int, payload: Any) -> RetrievedLog:
     if not isinstance(payload, dict):
         raise FinalizerContractError(f"{name} retrieved log {index} must be an object")
+    source = payload.get("source")
+    if source != CANONICAL_LOG_SOURCE:
+        raise FinalizerContractError(f"{name} retrieved log {index} source must be {CANONICAL_LOG_SOURCE}")
     return RetrievedLog(
         require_non_empty_string(f"{name}.log[{index}].log_id", payload.get("log_id")),
         require_optional_string(f"{name}.log[{index}].timestamp", payload.get("timestamp")),
@@ -654,7 +886,7 @@ def parse_retrieved_log(name: str, index: int, payload: Any) -> RetrievedLog:
         require_dict(f"{name}.log[{index}].attributes", payload.get("attributes")),
         require_dict(f"{name}.log[{index}].resource_attributes", payload.get("resource_attributes")),
         require_optional_string(f"{name}.log[{index}].service_name", payload.get("service_name")),
-        require_non_empty_string(f"{name}.log[{index}].source", payload.get("source")),
+        CANONICAL_LOG_SOURCE,
     )
 
 
@@ -866,10 +1098,69 @@ def validate_environment(env: dict[str, Any]) -> None:
     validate_endpoint("log_otlp_endpoint", str(env["log_otlp_endpoint"]), "/v1/logs")
 
 
+def validate_config_snapshot(config: object, env: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(config, dict):
+        raise FinalizerContractError("summary.config must be an object")
+    required = {
+        "SIGNOZ_BASE_URL",
+        "SIGNOZ_API_KEY",
+        "TRACEGUARD_OTLP_TRACES_ENDPOINT",
+        "TRACEGUARD_OTLP_LOGS_ENDPOINT",
+        "SIGNOZ_REQUEST_TIMEOUT_SECONDS",
+        "TRACEGUARD_GATE3B_INGEST_TIMEOUT_SECONDS",
+        "TRACEGUARD_GATE3B_POLL_INTERVAL_SECONDS",
+        "TRACEGUARD_OTLP_TIMEOUT_SECONDS",
+        "TRACEGUARD_GATE3B_SERVICE_NAME",
+    }
+    missing = sorted(required - set(config))
+    if missing:
+        raise FinalizerContractError(f"summary.config missing required keys: {missing}")
+    if config["SIGNOZ_API_KEY"] != "<set>":
+        raise FinalizerContractError("summary.config SIGNOZ_API_KEY must be <set>")
+    service_name = config["TRACEGUARD_GATE3B_SERVICE_NAME"]
+    if not isinstance(service_name, str) or not service_name.strip():
+        raise FinalizerContractError("summary.config TRACEGUARD_GATE3B_SERVICE_NAME must be non-empty")
+    validate_url("summary.config.SIGNOZ_BASE_URL", config["SIGNOZ_BASE_URL"])
+    trace_endpoint = require_non_empty_string("summary.config.TRACEGUARD_OTLP_TRACES_ENDPOINT", config["TRACEGUARD_OTLP_TRACES_ENDPOINT"])
+    log_endpoint = require_non_empty_string("summary.config.TRACEGUARD_OTLP_LOGS_ENDPOINT", config["TRACEGUARD_OTLP_LOGS_ENDPOINT"])
+    validate_endpoint("summary.config.TRACEGUARD_OTLP_TRACES_ENDPOINT", trace_endpoint, "/v1/traces")
+    validate_endpoint("summary.config.TRACEGUARD_OTLP_LOGS_ENDPOINT", log_endpoint, "/v1/logs")
+    if trace_endpoint != env.get("trace_otlp_endpoint"):
+        raise FinalizerContractError("summary.config trace endpoint disagrees with environment_check")
+    if log_endpoint != env.get("log_otlp_endpoint"):
+        raise FinalizerContractError("summary.config log endpoint disagrees with environment_check")
+    request_timeout = require_positive_number("summary.config.SIGNOZ_REQUEST_TIMEOUT_SECONDS", config["SIGNOZ_REQUEST_TIMEOUT_SECONDS"])
+    ingest_timeout = require_positive_number("summary.config.TRACEGUARD_GATE3B_INGEST_TIMEOUT_SECONDS", config["TRACEGUARD_GATE3B_INGEST_TIMEOUT_SECONDS"])
+    poll_interval = require_positive_number("summary.config.TRACEGUARD_GATE3B_POLL_INTERVAL_SECONDS", config["TRACEGUARD_GATE3B_POLL_INTERVAL_SECONDS"])
+    otlp_timeout = require_positive_number("summary.config.TRACEGUARD_OTLP_TIMEOUT_SECONDS", config["TRACEGUARD_OTLP_TIMEOUT_SECONDS"])
+    if poll_interval > ingest_timeout:
+        raise FinalizerContractError("summary.config poll interval must be <= ingestion timeout")
+    return dict(config) | {
+        "SIGNOZ_REQUEST_TIMEOUT_SECONDS": request_timeout,
+        "TRACEGUARD_GATE3B_INGEST_TIMEOUT_SECONDS": ingest_timeout,
+        "TRACEGUARD_GATE3B_POLL_INTERVAL_SECONDS": poll_interval,
+        "TRACEGUARD_OTLP_TIMEOUT_SECONDS": otlp_timeout,
+    }
+
+
 def validate_endpoint(name: str, value: str, suffix: str) -> None:
     parsed = urlparse(value)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc or not parsed.path.endswith(suffix):
         raise FinalizerContractError(f"environment_check.{name} must be an HTTP(S) endpoint ending in {suffix}")
+
+
+def validate_url(name: str, value: object) -> None:
+    url = require_non_empty_string(name, value)
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise FinalizerContractError(f"{name} must be an HTTP(S) URL")
+
+
+def require_positive_number(field: str, value: object) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+        raise FinalizerContractError(f"{field} must be a positive real number")
+    return float(value)
+
 
 
 def run_verification_commands() -> list[VerificationCommandResult]:
@@ -953,12 +1244,12 @@ SAFE_PLACEHOLDER_VALUES = {
 
 
 SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("signoz_api_key", re.compile(r"\bSIGNOZ_API_KEY\s*=\s*['\"]?([^'\"\s#]+)")),
-    ("authorization_header", re.compile(r"(?i)\bAuthorization\s*:\s*(?:Bearer\s+)?([^'\"\s#]+)")),
+    ("signoz_api_key", re.compile(r"(?:\bSIGNOZ_API_KEY\s*[=:]\s*|[\"'](?:SIGNOZ_API_KEY|SIGNOZ-API-KEY|signoz_api_key)[\"']\s*:\s*)[\"']?([^\"',\s#]+)")),
+    ("authorization_header", re.compile(r"(?i)(?:\bAuthorization\s*:\s*|[\"']Authorization[\"']\s*:\s*|[\"']authorization[\"']\s*:\s*)[\"']?(?:Bearer\s+)?([^\"',\r\n#]+)")),
     ("bearer_token", re.compile(r"(?i)\bBearer\s+([A-Za-z0-9._~+/=-]{16,})")),
     ("private_key", re.compile(r"(-----BEGIN [A-Z ]*PRIVATE KEY-----)")),
-    ("cookie", re.compile(r"(?i)\bCookie\s*:\s*([^\\n]+)")),
-    ("password_assignment", re.compile(r"(?i)\bpassword\s*=\s*['\"]([^'\"]{8,})['\"]")),
+    ("cookie", re.compile(r"(?:\bCookie\s*:\s*|[\"']Cookie[\"']\s*:\s*)[\"']?([^\"'\r\n]+)")),
+    ("password_assignment", re.compile(r"(?i)(?:\bpassword\s*[=:]\s*|[\"']password[\"']\s*:\s*)[\"']([^\"',\r\n]{8,})[\"']?")),
     ("service_account", re.compile(r"(?i)\"(?:client_email|private_key|private_key_id)\"\s*:\s*\"([^\"]+)\"")),
 )
 
@@ -1005,7 +1296,10 @@ def scan_text_payload_for_secrets(payload_name: str, text: str) -> list[dict[str
 
 
 def normalize_candidate(value: str) -> str:
-    return value.strip().strip("'\"").strip()
+    candidate = value.strip().strip(",").strip().strip("'\"").strip()
+    if candidate.lower().startswith("bearer "):
+        candidate = candidate[7:].strip()
+    return candidate.strip(",").strip()
 
 
 def is_scanner_source_declaration(path: str, line: str, category: str) -> bool:
@@ -1066,9 +1360,11 @@ def build_evidence(
     command_results: list[VerificationCommandResult],
     secret_scan: dict[str, Any],
     completion: ValidatedGate3BCompletion,
+    provenance: GitProvenance,
 ) -> dict[str, dict[str, Any]]:
     batch_id = str(summary["batch_id"])
     env = runtime_validation.environment_check
+    evidence_generated_at = now_iso()
     compat = compatibility_contract()
     log_contract = log_api_contract(str(env.get("signoz_version") or "unknown")) | {
         "opentelemetry_import_contract": compat,
@@ -1080,7 +1376,7 @@ def build_evidence(
         "sanitized": True,
     }
     verification = {
-        "captured_at": now_iso(),
+        "captured_at": evidence_generated_at,
         "commands": [item.to_dict() for item in command_results],
         "all_passed": all(item.passed for item in command_results),
         "sanitized": True,
@@ -1103,6 +1399,18 @@ def build_evidence(
         "failed_count": summary.get("failed_count"),
         "all_expectations_matched": summary.get("all_expectations_matched"),
         "live_exit_code": summary.get("live_exit_code"),
+        "source_commit_sha": summary.get("source_commit_sha"),
+        "source_worktree_clean": summary.get("source_worktree_clean"),
+        "finalizer_commit_sha": provenance.source_commit_sha,
+        "finalizer_worktree_clean_before_publication": provenance.source_worktree_clean,
+        "repository_root_verified": provenance.repository_root_verified,
+        "runtime_path_confined": True,
+        "symlink_protection_verified": True,
+        "config_service_name_binding_verified": True,
+        "log_source_provenance_verified": True,
+        "emission_manifest_consistency_verified": True,
+        "json_secret_patterns_verified": True,
+        "evidence_generated_at": evidence_generated_at,
         "sanitized": True,
     }
     decision = {
@@ -1137,6 +1445,18 @@ def build_evidence(
         "exact_scanned_bytes_written": True,
         "atomic_evidence_publication_succeeded": True,
         "opentelemetry_import_paths_reported_public_private": True,
+        "source_commit_sha": summary.get("source_commit_sha"),
+        "source_worktree_clean": summary.get("source_worktree_clean"),
+        "finalizer_commit_sha": provenance.source_commit_sha,
+        "finalizer_worktree_clean_before_publication": provenance.source_worktree_clean,
+        "repository_root_verified": provenance.repository_root_verified,
+        "runtime_path_confined": True,
+        "symlink_protection_verified": True,
+        "config_service_name_binding_verified": True,
+        "log_source_provenance_verified": True,
+        "emission_manifest_consistency_verified": True,
+        "json_secret_patterns_verified": True,
+        "evidence_generated_at": evidence_generated_at,
         "live_exit_code": completion.live_exit_code,
         "finalizer_exit_code": completion.finalizer_exit_code,
         "next_action": "Begin TG-AGT v1 agent-behaviour rules using controlled agent execution scenarios, while requiring both traceguard-telemetry-v2 and the finalized Gate 3B evidence as mandatory preconditions.",
@@ -1166,6 +1486,26 @@ def write_serialized_evidence(serialized: SerializedEvidenceSet) -> None:
     EVIDENCE_ROOT.mkdir(parents=True, exist_ok=True)
     temp_paths: list[Path] = []
     backup_paths: list[tuple[Path, Path]] = []
+    existing_targets = {name for name in serialized.filenames if (EVIDENCE_ROOT / name).exists()}
+    created_targets: list[Path] = []
+
+    def rollback() -> None:
+        for name in serialized.filenames:
+            target = EVIDENCE_ROOT / name
+            if name not in existing_targets and target.exists():
+                try:
+                    target.unlink()
+                except OSError:
+                    pass
+        for backup, target in reversed(backup_paths):
+            try:
+                if backup.exists():
+                    if target.exists():
+                        target.unlink()
+                    backup.replace(target)
+            except OSError:
+                pass
+
     try:
         for name in serialized.filenames:
             target = EVIDENCE_ROOT / name
@@ -1183,12 +1523,18 @@ def write_serialized_evidence(serialized: SerializedEvidenceSet) -> None:
                 backup_paths.append((backup, target))
         try:
             for name in serialized.filenames:
-                (EVIDENCE_ROOT / f".tmp-{os.getpid()}-{name}").replace(EVIDENCE_ROOT / name)
+                target = EVIDENCE_ROOT / name
+                (EVIDENCE_ROOT / f".tmp-{os.getpid()}-{name}").replace(target)
+                if name not in existing_targets:
+                    created_targets.append(target)
         except Exception:
-            for backup, target in reversed(backup_paths):
-                if backup.exists():
-                    backup.replace(target)
+            rollback()
             raise
+        for name in serialized.filenames:
+            actual = (EVIDENCE_ROOT / name).read_text(encoding="utf-8")
+            if actual != serialized.serialized_text[name]:
+                rollback()
+                raise FinalizerContractError(f"published evidence bytes mismatch for {name}")
         for backup, _target in backup_paths:
             backup.unlink(missing_ok=True)
     except Exception:
@@ -1197,21 +1543,20 @@ def write_serialized_evidence(serialized: SerializedEvidenceSet) -> None:
                 temp.unlink(missing_ok=True)
             except OSError:
                 pass
-        for backup, target in reversed(backup_paths):
-            try:
-                if backup.exists() and not target.exists():
-                    backup.replace(target)
-            except OSError:
-                pass
+        rollback()
         raise
 
 
 def sanitize_text(text: str) -> str:
-    sanitized = re.sub(r"(?i)(SIGNOZ_API_KEY\s*=\s*)[^\s'\"#]+", r"\1<redacted>", text)
+    sanitized = re.sub(r"(?i)(SIGNOZ_API_KEY\s*[=:]\s*)[^\s'\"#]+", r"\1<redacted>", text)
     sanitized = re.sub(r"(?i)(SIGNOZ-API-KEY[:=]\s*)[^\s'\"#]+", r"\1<redacted>", sanitized)
+    sanitized = re.sub(r"(?i)([\"'](?:SIGNOZ_API_KEY|SIGNOZ-API-KEY|signoz_api_key)[\"']\s*:\s*)[\"'][^\"']+[\"']", r"\1\"<redacted>\"", sanitized)
     sanitized = re.sub(r"(?i)(Authorization:\s*)(Bearer\s+)?[^\s'\"#]+", r"\1<redacted>", sanitized)
-    sanitized = re.sub(r"(?i)(Cookie:\s*)[^\n]+", r"\1<redacted>", sanitized)
-    sanitized = re.sub(r"(?i)(password\s*=\s*)['\"][^'\"]+['\"]", r"\1'<redacted>'", sanitized)
+    sanitized = re.sub(r"(?i)([\"']Authorization[\"']\s*:\s*)[\"'][^\"']+[\"']", r"\1\"<redacted>\"", sanitized)
+    sanitized = re.sub(r"(?i)(Cookie:\s*)[^\r\n]+", r"\1<redacted>", sanitized)
+    sanitized = re.sub(r"(?i)([\"']Cookie[\"']\s*:\s*)[\"'][^\"']+[\"']", r"\1\"<redacted>\"", sanitized)
+    sanitized = re.sub(r"(?i)(password\s*[=:]\s*)['\"][^'\"]+['\"]", r"\1'<redacted>'", sanitized)
+    sanitized = re.sub(r"(?i)([\"']password[\"']\s*:\s*)[\"'][^\"']+[\"']", r"\1\"<redacted>\"", sanitized)
     return sanitized
 
 

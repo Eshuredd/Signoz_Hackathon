@@ -6,10 +6,14 @@ import pytest
 
 from gate3.evaluator import evaluate_run_bundle
 from gate3b.main import main
-from gate3b.runner import RunnerDependencies, run_gate3b
+from gate3b.runner import GitProvenance, RunnerDependencies, run_gate3b
 from gate3b.scenarios import get_definition
 from gate3b.trace_exporter import emit_traces
 from conftest import make_trace
+
+
+def clean_provenance() -> GitProvenance:
+    return GitProvenance("1" * 40, True)
 
 
 def test_cli_list_scenarios_without_api_key(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -65,6 +69,7 @@ def test_runner_mismatch_allows_next_scenario_and_internal_stops(config) -> None
         trace_poll=trace_poll,
         log_poll=log_poll,
         evaluator=bad_eval,
+        provenance_factory=clean_provenance,
         write_json=lambda path, payload: None,
     )
     code = run_gate3b(deps=deps)
@@ -76,7 +81,7 @@ def test_runner_mismatch_allows_next_scenario_and_internal_stops(config) -> None
         raise RuntimeError("bug")
 
     calls.clear()
-    deps = RunnerDependencies(config_factory=lambda: config, client_factory=client_factory, trace_emit=boom_trace_emit, write_json=lambda path, payload: None)
+    deps = RunnerDependencies(config_factory=lambda: config, client_factory=client_factory, trace_emit=boom_trace_emit, provenance_factory=clean_provenance, write_json=lambda path, payload: None)
     assert run_gate3b(deps=deps) == 4
     assert calls == ["pass_single_trace_correlated_logs"]
 
@@ -111,7 +116,19 @@ def test_normal_runner_never_writes_committed_evidence(config) -> None:
             query_range=lambda payload: {"status": "success", "data": {"data": {"results": [{"rows": []}]}}},
         )
 
-    deps = RunnerDependencies(config_factory=lambda: config, client_factory=client_factory, write_json=writer)
+    deps = RunnerDependencies(config_factory=lambda: config, client_factory=client_factory, provenance_factory=clean_provenance, write_json=writer)
     assert run_gate3b(check_environment_only=True, deps=deps) == 0
     assert any(path.startswith(".traceguard/runtime/gate3b/") for path in written)
     assert not any(path.startswith("gate3b/evidence/") for path in written)
+
+
+def test_runner_rejects_dirty_source_before_export(config) -> None:
+    calls: list[str] = []
+    deps = RunnerDependencies(
+        config_factory=lambda: config,
+        provenance_factory=lambda: GitProvenance("1" * 40, False),
+        trace_emit=lambda *args, **kwargs: calls.append("trace"),
+        write_json=lambda path, payload: None,
+    )
+    assert run_gate3b(deps=deps) == 2
+    assert calls == []
